@@ -59,9 +59,54 @@ Everything you'd want to change lives in clearly-marked constants at the top of 
   that plays your idea back to you before it writes the brief. Tune it freely.
 - `SENTINEL` — the marker a mode emits when it's done and the output begins.
 
+## Optional: sync your key across devices
+
+By default the app is fully backend-free — your key lives only in this browser,
+so clearing the browser (or switching device) means pasting it again. If you'd
+rather the key **follow you across browsers and devices**, turn on cloud sync.
+It's powered by [Supabase](https://supabase.com) (free tier) and is **off until
+you add two values** — nothing changes until you do.
+
+1. Create a free project at <https://supabase.com>.
+2. In the project's **SQL Editor**, run:
+
+   ```sql
+   create table if not exists public.user_keys (
+     user_id uuid not null references auth.users(id) on delete cascade,
+     provider text not null,
+     api_key text,
+     updated_at timestamptz default now(),
+     primary key (user_id, provider)
+   );
+   alter table public.user_keys enable row level security;
+   create policy "own keys" on public.user_keys
+     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+   ```
+
+3. In **Project Settings → API**, copy the **Project URL** and the **anon/public**
+   key, and paste them into the constants at the top of the `<script>` in
+   `index.html`:
+
+   ```js
+   const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+   const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+   ```
+
+4. (Email is enabled by default; for production add your own SMTP under
+   **Authentication → Providers → Email** so codes always send.)
+
+Now a **Sync across devices** section appears in Settings: the user enters their
+email, gets a 6-digit code, and signs in. Their key is saved to their account
+and restored automatically the next time they sign in anywhere — even on a
+freshly-cleared browser. The publishable anon key is safe to ship, and a
+row-level-security policy means each person can only read their own key.
+
 ## Privacy
 
-- No backend, no analytics, no accounts.
+- Backend-free by default — no analytics, no accounts.
 - Your API key, your name, and your saved briefs live only in your browser.
 - Model requests go straight from your browser to Groq or Google — nowhere else.
 - **Clear all local data** any time from Settings.
+- Cloud sync (above) is **opt-in**: only if you add Supabase keys, and even then
+  the only thing stored in your project is the API key, guarded so each signed-in
+  user can read only their own.

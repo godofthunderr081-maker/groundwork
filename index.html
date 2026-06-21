@@ -677,6 +677,19 @@ body{
         <div class="settings-row" style="margin-top:10px"><button class="btn btn-primary btn-sm" id="keySave" type="button">Save &amp; test key</button><button class="btn btn-danger btn-sm" id="keyClear" type="button">Clear key</button></div>
       </div>
       <div class="field"><label class="toggle-row" for="searchToggle"><span><span style="font-weight:600">Search the web for accuracy</span><span class="sub" style="display:block;margin-top:2px">Look things up while interviewing — sharper questions &amp; better tips.</span></span><input type="checkbox" id="searchToggle" class="switch" /></label></div>
+      <div class="settings-section" id="syncSection" style="display:none">
+        <label style="font-weight:600;display:block;margin-bottom:6px">Sync across devices</label>
+        <div class="sub" style="margin:-2px 0 10px">Sign in with your email and your key follows you to any browser or device — even after you clear this one. No password.</div>
+        <div id="syncOut">
+          <div class="key-row"><input id="syncEmail" type="email" placeholder="you@email.com" autocomplete="email" spellcheck="false" /><button class="btn btn-primary btn-sm" id="syncSend" type="button">Email me a code</button></div>
+          <div class="key-row" id="syncCodeRow" style="display:none;margin-top:8px"><input id="syncCode" type="text" inputmode="numeric" placeholder="6-digit code" autocomplete="one-time-code" /><button class="btn btn-primary btn-sm" id="syncVerify" type="button">Verify &amp; sync</button></div>
+        </div>
+        <div id="syncIn" style="display:none">
+          <div class="trust" style="margin-top:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="#4E7BF5" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="#4E7BF5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Synced as <strong id="syncWho">you</strong>. Your key is saved to your account and restored automatically when you sign in elsewhere.</span></div>
+          <div class="settings-row" style="margin-top:10px"><button class="btn btn-danger btn-sm" id="syncSignOut" type="button">Sign out</button></div>
+        </div>
+        <div class="validate-msg" id="syncMsg" role="status"></div>
+      </div>
       <div class="settings-section"><div class="settings-row"><button class="btn btn-sm" id="replayWalkthrough" type="button">Show the intro again</button><button class="btn btn-danger btn-sm" id="clearAll" type="button">Clear all local data</button></div></div>
     </div>
   </div>
@@ -758,6 +771,15 @@ body{
 
 /* Product name — used everywhere the name appears (single source of truth). */
 const PRODUCT_NAME = "Made-Up";
+
+/* CLOUD SYNC (optional) — paste your Supabase project URL + anon/public key to
+   let a signed-in user's API key follow them across browsers and devices (so a
+   cleared browser no longer means re-pasting). Leave BOTH blank to keep the app
+   100% backend-free, exactly as before (key lives only in this browser).
+   Setup: create a free project at https://supabase.com, run the SQL in README,
+   then paste the two values below. */
+const SUPABASE_URL = "";
+const SUPABASE_ANON_KEY = "";
 
 /* MODEL NAMES — swap for any current chat model.
    Groq:   https://console.groq.com/docs/models
@@ -1013,6 +1035,7 @@ const state = {
   currentBrief: null,
   activeHistoryId: null,
   streaming: false,
+  session: null,         // Supabase auth session when cloud sync is on (else null)
   playbackDone: false,   // set true once a real playback turn has happened
   forceGenerate: false,  // set by the "generate it now" escape hatch
   gatedOnce: false,      // safety valve so the playback gate never loops
@@ -1051,6 +1074,7 @@ const el={ sidebar:$("sidebar"),scrim:$("scrim"),menuBtn:$("menuBtn"),history:$(
   keyProviderName:$("keyProviderName"),trustProvider:$("trustProvider"),settingsValidateMsg:$("settingsValidateMsg"),settingsProviderSub:$("settingsProviderSub"),nameInput:$("nameInput"),searchToggle:$("searchToggle"),replayWalkthrough:$("replayWalkthrough"),clearAll:$("clearAll"),
   wtOverlay:$("wtOverlay"),wtSkip:$("wtSkip"),wtBack:$("wtBack"),wtNext:$("wtNext"),wtDots:$("wtDots"),igSkip:$("igSkip"),wtName:$("wtName"),
   wtProviderSeg:$("wtProviderSeg"),wtKeyInput:$("wtKeyInput"),wtKeyProvider:$("wtKeyProvider"),wtValidate:$("wtValidate"),wtValidateMsg:$("wtValidateMsg"),wtGetKey:$("wtGetKey"),wtKeySteps:$("wtKeySteps"),
+  syncSection:$("syncSection"),syncOut:$("syncOut"),syncIn:$("syncIn"),syncEmail:$("syncEmail"),syncSend:$("syncSend"),syncCodeRow:$("syncCodeRow"),syncCode:$("syncCode"),syncVerify:$("syncVerify"),syncWho:$("syncWho"),syncSignOut:$("syncSignOut"),syncMsg:$("syncMsg"),
   toast:$("toast") };
 
 /* =========================================================================
@@ -1401,7 +1425,7 @@ async function wtDoValidate(){
   const key=el.wtKeyInput.value.trim(); if(!key){ el.wtValidateMsg.className="validate-msg bad"; el.wtValidateMsg.textContent="Paste your key first."; return; }
   el.wtValidate.disabled=true; el.wtValidate.textContent="Testing…"; el.wtValidateMsg.className="validate-msg"; el.wtValidateMsg.textContent="Checking your key…";
   const r=await validateKey(wtProvider,key); el.wtValidate.disabled=false; el.wtValidate.textContent="Connect";
-  if(r.ok){ setKey(key,wtProvider); state.provider=wtProvider; lsSet(LS.provider,wtProvider); wtValidated=true; el.wtValidateMsg.className="validate-msg ok"; el.wtValidateMsg.innerHTML="✓ Connected — you're ready"; renderChip(); setComposerEnabled(true); }
+  if(r.ok){ setKey(key,wtProvider); state.provider=wtProvider; lsSet(LS.provider,wtProvider); wtValidated=true; el.wtValidateMsg.className="validate-msg ok"; el.wtValidateMsg.innerHTML="✓ Connected — you're ready"; pushCloudKey(wtProvider, key); renderChip(); setComposerEnabled(true); }
   else { wtValidated=false; el.wtValidateMsg.className="validate-msg bad"; el.wtValidateMsg.textContent=r.message; }
   refreshWtNext();
 }
@@ -1447,12 +1471,17 @@ function wireEvents(){
     const r=await validateKey(state.provider,key); el.keySave.disabled=false; el.keySave.textContent="Save & test key";
     if(r.ok){ setKey(key); el.settingsValidateMsg.className="validate-msg ok"; el.settingsValidateMsg.innerHTML="✓ Connected and saved"; }
     else { setKey(key); el.settingsValidateMsg.className="validate-msg bad"; el.settingsValidateMsg.textContent=r.message+" (saved anyway)"; }
-    renderChip(); setComposerEnabled(true); updateEscapeHatch();
+    pushCloudKey(state.provider, key); renderChip(); setComposerEnabled(true); updateEscapeHatch();
   });
-  el.keyClear.addEventListener("click",()=>{ setKey(""); el.keyInput.value=""; renderChip(); setComposerEnabled(true); updateEscapeHatch(); el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Key cleared."; });
+  el.keyClear.addEventListener("click",()=>{ setKey(""); deleteCloudKey(state.provider); el.keyInput.value=""; renderChip(); setComposerEnabled(true); updateEscapeHatch(); el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Key cleared."; });
   el.keyInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); el.keySave.click(); } });
   el.keyToggle.addEventListener("click",()=>{ const show=el.keyInput.type==="password"; el.keyInput.type=show?"text":"password"; el.keyToggle.textContent=show?"Hide":"Show"; });
   el.searchToggle.addEventListener("change",()=>{ state.webSearch=el.searchToggle.checked; if(state.webSearch) state.searchUnavailable=false; lsSet(LS.search, state.webSearch?"1":"0"); });
+  if(el.syncSend) el.syncSend.addEventListener("click",syncSendCode);
+  if(el.syncVerify) el.syncVerify.addEventListener("click",syncVerify);
+  if(el.syncSignOut) el.syncSignOut.addEventListener("click",syncSignOut);
+  if(el.syncEmail) el.syncEmail.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); syncSendCode(); } });
+  if(el.syncCode) el.syncCode.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); syncVerify(); } });
   el.replayWalkthrough.addEventListener("click",()=>{ closeSettings(); setTimeout(()=>showWalkthrough(true),180); });
   el.clearAll.addEventListener("click",()=>{ if(confirm("Clear everything "+PRODUCT_NAME+" has stored in this browser — your name, API keys, and saved briefs? This can't be undone.")){ Object.values(LS).forEach(lsDel); location.reload(); } });
   // walkthrough
@@ -1471,6 +1500,82 @@ function wireEvents(){
 }
 
 /* =========================================================================
+   CLOUD SYNC (optional, Supabase) — email-code login so a saved API key follows
+   the user across browsers/devices. Entirely OFF unless SUPABASE_URL +
+   SUPABASE_ANON_KEY are set; when off, none of this runs and no SDK is loaded.
+   ========================================================================= */
+let sb=null, sbReady=false;
+function syncEnabled(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
+async function initSync(){
+  updateSyncUI();
+  if(!syncEnabled()) return;
+  try{
+    const mod=await import("https://esm.sh/@supabase/supabase-js@2");
+    sb=mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } });
+    sbReady=true;
+    sb.auth.onAuthStateChange((_e,session)=>{ state.session=session; updateSyncUI(); if(session) pullCloudKeys(); });
+    const { data:{ session } }=await sb.auth.getSession();
+    state.session=session||null; updateSyncUI();
+    if(session) await pullCloudKeys();
+  }catch(e){ sbReady=false; updateSyncUI(); syncMsg("Couldn't load sync — check your connection and reload.","bad"); }
+}
+async function pullCloudKeys(){
+  if(!sb||!state.session) return;
+  try{
+    const { data, error }=await sb.from("user_keys").select("provider,api_key").eq("user_id", state.session.user.id);
+    if(error||!data) return;
+    let got=false;
+    data.forEach(r=>{ if(r.api_key && !getKey(r.provider)){ setKey(r.api_key, r.provider); got=true; } });
+    if(got){
+      renderChip(); setComposerEnabled(true); updateEscapeHatch(); syncSettingsUI();
+      // if the walkthrough's key step was only up because we had no key, we're set now
+      if(el.wtOverlay.classList.contains("open") && lsGet(LS.onboarded,"")==="1" && hasAnyKey()){ closeOverlay(el.wtOverlay); showPicker(); }
+    }
+  }catch(_){}
+}
+async function pushCloudKey(provider, key){
+  if(!sb||!state.session||!key) return;
+  try{ await sb.from("user_keys").upsert({ user_id: state.session.user.id, provider, api_key:key, updated_at:new Date().toISOString() }, { onConflict:"user_id,provider" }); }catch(_){}
+}
+async function deleteCloudKey(provider){
+  if(!sb||!state.session) return;
+  try{ await sb.from("user_keys").delete().eq("user_id", state.session.user.id).eq("provider", provider||state.provider); }catch(_){}
+}
+function syncMsg(t,kind){ if(!el.syncMsg) return; el.syncMsg.className="validate-msg"+(kind?(" "+kind):""); el.syncMsg.textContent=t; }
+function updateSyncUI(){
+  if(!el.syncSection) return;
+  if(!syncEnabled()){ el.syncSection.style.display="none"; return; }
+  el.syncSection.style.display="";
+  const signedIn=!!state.session;
+  el.syncOut.style.display=signedIn?"none":"";
+  el.syncIn.style.display=signedIn?"":"none";
+  if(signedIn) el.syncWho.textContent=(state.session.user&&state.session.user.email)||"your account";
+}
+async function syncSendCode(){
+  if(!sbReady){ syncMsg("Sync isn't ready yet — give it a second and retry.","bad"); return; }
+  const email=el.syncEmail.value.trim();
+  if(!/.+@.+\..+/.test(email)){ syncMsg("Enter a valid email address.","bad"); return; }
+  el.syncSend.disabled=true; el.syncSend.textContent="Sending…"; syncMsg("Emailing you a 6-digit code…","");
+  const { error }=await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
+  el.syncSend.disabled=false; el.syncSend.textContent="Email me a code";
+  if(error){ syncMsg(error.message||"Couldn't send the code.","bad"); return; }
+  el.syncCodeRow.style.display=""; syncMsg("Check your email and enter the 6-digit code.","ok"); setTimeout(()=>el.syncCode.focus(),40);
+}
+async function syncVerify(){
+  if(!sbReady) return;
+  const email=el.syncEmail.value.trim(), token=el.syncCode.value.trim();
+  if(!token){ syncMsg("Enter the code from your email.","bad"); return; }
+  el.syncVerify.disabled=true; el.syncVerify.textContent="Verifying…"; syncMsg("Verifying…","");
+  const { error }=await sb.auth.verifyOtp({ email, token, type:"email" });
+  el.syncVerify.disabled=false; el.syncVerify.textContent="Verify & sync";
+  if(error){ syncMsg(error.message||"That code didn't work — request a new one.","bad"); return; }
+  el.syncCode.value=""; el.syncCodeRow.style.display="none"; updateSyncUI();
+  syncMsg("Signed in — your key now syncs across devices.","ok");
+  const k=getKey(); if(k) await pushCloudKey(state.provider, k); else await pullCloudKeys();
+}
+async function syncSignOut(){ if(!sb) return; try{ await sb.auth.signOut(); }catch(_){} state.session=null; updateSyncUI(); syncMsg("Signed out on this device. Your key still works here.",""); toast("Signed out"); }
+
+/* =========================================================================
    INIT
    ========================================================================= */
 function applyProductName(){ document.title=PRODUCT_NAME+" — turn a fuzzy idea into a clean build brief"; el.brandWord.textContent=PRODUCT_NAME; el.wtOverlay.setAttribute("aria-label","Welcome to "+PRODUCT_NAME); el.settingsProviderSub.textContent=PRODUCT_NAME+" talks directly to whichever you pick. Both have a free tier."; document.querySelectorAll(".pn").forEach(n=>n.textContent=PRODUCT_NAME); }
@@ -1479,6 +1584,7 @@ function init(){
   const m=activeMode(); el.heroTitle.innerHTML=personalizedHero(m); el.heroSub.textContent=m.heroSub; renderExamples(m);
   showPicker(); autoGrow(); setComposerEnabled(true);
   if(lsGet(LS.onboarded,"")!=="1" || !hasAnyKey()){ showWalkthrough(lsGet(LS.onboarded,"")!=="1"); }
+  initSync();   // lights up only if Supabase constants are set; otherwise a no-op
 }
 init();
 </script>
