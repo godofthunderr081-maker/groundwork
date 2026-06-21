@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Made-Up — turn a fuzzy idea into a clean build brief</title>
+<meta name="description" content="Made-Up interviews you about your idea and writes a clean build brief you can paste into any AI builder. Runs in your browser. Bring your own key." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+/* =========================================================================
+   DESIGN TOKENS — define once, use everywhere (Section 9). No arbitrary values.
+   "Made-Up": turning chaos into clarity. Cobalt + ink on cool paper, with
+   one calm green accent reserved for success / "ready".
+   ========================================================================= */
+:root{
+  /* Spacing scale */
+  --s4:4px; --s8:8px; --s12:12px; --s16:16px; --s24:24px; --s32:32px; --s48:48px; --s64:64px;
+  /* Type scale */
+  --t12:.75rem; --t14:.875rem; --t16:1rem; --t18:1.125rem; --t22:1.375rem; --t28:1.75rem; --t36:2.25rem; --t48:3rem;
+  /* Radius */
+  --r8:8px; --r12:12px; --r16:16px; --rFull:999px;
+  /* Elevation (two levels max) */
+  --e1: 0 1px 2px rgba(26,31,43,.06), 0 1px 1px rgba(26,31,43,.04);
+  --e2: 0 12px 34px rgba(26,31,43,.13), 0 3px 10px rgba(26,31,43,.06);
+
+  /* Color tokens */
+  --bg:       #F4F5F7;   /* background */
+  --surface:  #FFFFFF;   /* surface */
+  --ink:      #1A1F2B;   /* primary text / dark surface */
+  --ink-2:    #2C3340;
+  --muted:    #586273;   /* muted text (AA on surface) */
+  --line:     rgba(255,255,255,.14);   /* border */
+  --accent:   #4E7BF5;   /* the ONE accent — primary action only */
+  --accent-h: #2F4CC0;   /* hover */
+  --accent-a: #263F9E;   /* active */
+  --accent-t: rgba(124,99,242,.18);   /* accent wash */
+  --ok:       #34D399;   /* success */
+  --ok-t:     #E6F3EC;
+  --warn:     #B5740E;
+  --warn-t:   #FBF1DD;
+  --danger:   #B0392E;
+  --danger-t: #FBEEEC;
+
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --sidebar-w: 280px;
+  --readw: 65ch;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; font-family:var(--font-body); color:var(--ink); background:var(--bg);
+  font-size:var(--t16); line-height:1.5; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+button{ font-family:inherit; cursor:pointer; }
+textarea,input,button{ font-size:var(--t16); }
+a{ color:var(--accent-a); }
+
+/* Focus: a visible ring on everything interactive (Section 9) */
+:focus-visible{ outline:2.5px solid var(--accent); outline-offset:2px; border-radius:6px; }
+:focus:not(:focus-visible){ outline:none; }
+::selection{ background:var(--accent-t); }
+
+/* ---- Buttons: every state ---- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s8);
+  border:1px solid var(--line); border-radius:var(--r8);
+  padding:10px var(--s16); font-weight:600; font-size:var(--t14); line-height:1; min-height:40px;
+  background:var(--surface); color:var(--ink);
+  transition:background .15s ease, border-color .15s ease, transform .05s ease, box-shadow .15s ease;
+}
+.btn:hover{ background:#fbfbfd; }
+.btn:active{ transform:translateY(1px); }
+.btn-primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-primary:hover{ background:var(--accent-h); border-color:var(--accent-h); }
+.btn-primary:active{ background:var(--accent-a); }
+.btn-ghost{ background:transparent; border-color:transparent; color:var(--muted); }
+.btn-ghost:hover{ background:rgba(26,31,43,.05); color:var(--ink); }
+.btn-danger{ color:var(--danger); }
+.btn-danger:hover{ background:var(--danger-t); border-color:#e7bcb6; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+.btn-sm{ padding:7px 11px; min-height:34px; font-size:var(--t14); }
+
+.app{ display:flex; height:100dvh; height:100vh; overflow:hidden; }
+
+/* ---- Sidebar ---- */
+.sidebar{
+  width:var(--sidebar-w); flex:0 0 var(--sidebar-w);
+  background:var(--ink); color:#E7EAF1; display:flex; flex-direction:column; border-right:1px solid #0f131b;
+}
+.sidebar-head{ padding:var(--s16) var(--s16) var(--s12); }
+.brandmark{ display:flex; align-items:center; gap:var(--s8); margin-bottom:var(--s16); }
+.brandmark .word{ font-family:var(--font-display); font-weight:600; font-size:var(--t22); letter-spacing:-.01em; color:#fff; }
+.new-btn{
+  width:100%; background:var(--accent); color:#fff; border:none; border-radius:var(--r8);
+  padding:11px var(--s16); font-weight:600; min-height:42px;
+  display:flex; align-items:center; justify-content:center; gap:var(--s8);
+  transition:background .15s ease, transform .05s ease;
+}
+.new-btn:hover{ background:#4d68e0; } .new-btn:active{ transform:translateY(1px); }
+.history-head{ padding:var(--s16) var(--s16) var(--s4); font-size:var(--t12); letter-spacing:.09em; text-transform:uppercase; color:#8C97AC; font-weight:600; }
+.history{ flex:1 1 auto; overflow-y:auto; padding:0 var(--s8) var(--s16); }
+.history-empty{ color:#8C97AC; font-size:var(--t14); line-height:1.5; padding:var(--s4) var(--s8) var(--s16); }
+.hist-item{
+  position:relative; width:100%; text-align:left; background:transparent; border:none; color:#D7DCE7;
+  border-radius:var(--r8); padding:10px 11px 11px 13px; display:block; margin-bottom:3px; transition:background .12s ease;
+}
+.hist-item:hover{ background:rgba(255,255,255,.07); }
+.hist-item.active{ background:rgba(58,91,217,.20); }
+.hist-item.active::before{ content:""; position:absolute; left:4px; top:10px; bottom:10px; width:3px; border-radius:3px; background:var(--accent); }
+.hist-item .mode{ display:inline-flex; align-items:center; gap:4px; font-size:var(--t12); font-weight:600; color:#AFC0FF; margin-bottom:3px; }
+.hist-item .mode svg{ width:12px; height:12px; }
+.hist-item .t{ font-weight:600; font-size:var(--t14); line-height:1.35; color:#fff; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.hist-item .d{ font-size:var(--t12); color:#8C97AC; margin-top:4px; }
+.sidebar-foot{ border-top:1px solid #2a3140; padding:var(--s12); display:flex; align-items:center; gap:var(--s8); }
+.who{ display:flex; align-items:center; gap:var(--s8); flex:1 1 auto; min-width:0; background:none; border:none; cursor:pointer; padding:5px 6px; border-radius:var(--r8); transition:background .12s; text-align:left; }
+.who:hover{ background:rgba(255,255,255,.07); }
+.avatar{ width:30px; height:30px; border-radius:var(--r8); flex:0 0 auto; background:var(--accent); color:#fff; font-weight:700; font-size:var(--t14); display:flex; align-items:center; justify-content:center; }
+.who .nm{ font-size:var(--t14); color:#D7DCE7; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.icon-btn{ background:transparent; border:none; color:#AEB7C7; border-radius:var(--r8); width:38px; height:38px; display:flex; align-items:center; justify-content:center; transition:background .12s ease, color .12s ease; }
+.icon-btn:hover{ background:rgba(255,255,255,.08); color:#fff; }
+
+/* ---- Main ---- */
+.main{ flex:1 1 auto; display:flex; flex-direction:column; min-width:0; position:relative; }
+.topbar{ display:flex; align-items:center; gap:var(--s8); padding:var(--s12) var(--s16); border-bottom:1px solid var(--line); background:rgba(244,245,247,.85); backdrop-filter:saturate(1.2) blur(8px); }
+.menu-btn{ display:none; }
+.topbar .spacer{ flex:1 1 auto; }
+.topbar-title{ font-weight:600; font-size:var(--t14); color:var(--ink); display:flex; align-items:center; gap:var(--s8); }
+.topbar-title .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+.chip{ display:inline-flex; align-items:center; gap:var(--s8); border:1px solid var(--line); background:var(--surface); border-radius:var(--rFull); padding:6px 11px; font-size:var(--t14); font-weight:500; color:var(--muted); min-height:34px; transition:border-color .12s, background .12s; }
+.chip:hover{ background:#fbfbfd; }
+.chip .led{ width:8px; height:8px; border-radius:50%; background:#aeb6c2; box-shadow:0 0 0 3px #eceef2; }
+.chip.ok .led{ background:var(--ok); box-shadow:0 0 0 3px var(--ok-t); }
+.chip strong{ color:var(--ink); font-weight:600; }
+
+.scroll{ flex:1 1 auto; overflow-y:auto; scroll-behavior:smooth; }
+.view{ max-width:760px; margin:0 auto; padding:var(--s24) var(--s16) var(--s32); }
+
+/* ---- Mode picker (Section 8) ---- */
+.picker-view{ display:none; }
+.picker-head{ padding:6vh 0 var(--s24); }
+.picker-head h1{ font-family:var(--font-display); font-weight:500; font-size:clamp(1.8rem,4.5vw,var(--t36)); line-height:1.1; letter-spacing:-.02em; margin:0 0 var(--s8); }
+.picker-head h1 em{ font-style:italic; color:var(--accent-a); }
+.picker-head p{ color:var(--muted); font-size:var(--t18); margin:0; max-width:46ch; }
+.mode-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:var(--s12); }
+.mode-card{ text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:var(--r16); padding:var(--s16); transition:border-color .15s, box-shadow .15s, transform .05s; position:relative; }
+.mode-card.enabled{ cursor:pointer; }
+.mode-card.enabled:hover{ border-color:var(--accent); box-shadow:var(--e1); }
+.mode-card.enabled:active{ transform:translateY(1px); }
+.mode-card.disabled{ opacity:.62; cursor:not-allowed; }
+.mode-ico{ width:38px; height:38px; border-radius:var(--r12); background:var(--accent-t); color:var(--accent-a); display:flex; align-items:center; justify-content:center; margin-bottom:var(--s12); }
+.mode-card.disabled .mode-ico{ background:#eef0f3; color:#9aa3b2; }
+.mode-card .ml{ font-weight:700; font-size:var(--t16); display:flex; align-items:center; gap:var(--s8); }
+.mode-card .mt{ color:var(--muted); font-size:var(--t14); margin-top:4px; line-height:1.45; }
+.soon{ font-size:var(--t12); font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); background:#eef0f3; border-radius:6px; padding:2px 6px; }
+
+/* ---- Interview ---- */
+.interview-view{ display:none; }
+.hero{ padding:6vh 0 var(--s24); }
+.eyebrow{ display:inline-flex; align-items:center; gap:var(--s8); color:var(--accent-a); background:var(--accent-t); border-radius:var(--rFull); padding:5px 11px; font-size:var(--t12); font-weight:600; letter-spacing:.02em; margin-bottom:var(--s16); }
+.hero h1{ font-family:var(--font-display); font-weight:500; font-size:clamp(1.8rem,5vw,var(--t48)); line-height:1.05; letter-spacing:-.02em; margin:0 0 var(--s12); }
+.hero h1 em{ font-style:italic; color:var(--accent-a); }
+.hero p{ color:var(--muted); font-size:var(--t18); max-width:46ch; margin:0; }
+.examples{ margin-top:var(--s24); display:flex; flex-wrap:wrap; gap:var(--s8); }
+.chip-ex{ border:1px solid var(--line); background:var(--surface); color:var(--muted); border-radius:var(--rFull); padding:9px 14px; font-size:var(--t14); min-height:38px; transition:all .12s; }
+.chip-ex:hover{ border-color:var(--accent); color:var(--accent-a); background:var(--accent-t); }
+
+.transcript{ position:relative; padding-left:34px; }
+.transcript::before{ content:""; position:absolute; left:9px; top:6px; bottom:6px; width:2px; background:var(--line); border-radius:2px; }
+.turn{ position:relative; margin-bottom:var(--s24); }
+.turn .node{ position:absolute; left:-34px; top:3px; width:20px; height:20px; border-radius:50%; background:var(--surface); border:2px solid var(--line); z-index:1; }
+.turn .node::after{ content:""; position:absolute; inset:4px; border-radius:50%; background:var(--line); }
+.turn-user .node{ border-color:var(--ink); } .turn-user .node::after{ background:var(--ink); }
+.turn-bot .node{ border-color:var(--accent); } .turn-bot .node::after{ background:var(--accent); }
+.turn-bot.live .node{ animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(58,91,217,.35); } 50%{ box-shadow:0 0 0 6px rgba(58,91,217,0); } }
+.who-label{ font-size:var(--t12); font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.turn-bot .who-label{ color:var(--accent-a); }
+.bubble{ font-size:var(--t18); line-height:1.6; white-space:pre-wrap; }
+/* tap-to-answer: a frosted-glass panel that floats on the typer bar */
+.answer-bar{ display:none; max-width:760px; margin:0 auto var(--s8);
+  background:rgba(255,255,255,.55); -webkit-backdrop-filter:blur(16px) saturate(1.6); backdrop-filter:blur(16px) saturate(1.6);
+  border:1px solid rgba(255,255,255,.65); border-radius:var(--r16);
+  box-shadow:0 10px 34px rgba(26,31,43,.14), inset 0 1px 0 rgba(255,255,255,.7); padding:var(--s12) var(--s16); }
+.answer-bar.show{ display:block; animation:glassUp .25s ease; }
+@keyframes glassUp{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+.answer-label{ font-size:var(--t12); font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.answer-opts{ display:flex; flex-wrap:wrap; gap:var(--s8); }
+.opt{ border:1.5px solid rgba(58,91,217,.18); background:rgba(255,255,255,.82); color:var(--ink); border-radius:var(--rFull);
+  padding:9px 15px; font-size:var(--t14); font-weight:500; min-height:40px; text-align:left; transition:border-color .12s, background .12s, color .12s, transform .05s; }
+.opt:hover{ border-color:var(--accent); background:#fff; color:var(--accent-a); }
+.opt:active{ transform:translateY(1px); }
+.opt-else{ color:var(--muted); border-style:dashed; background:transparent; }
+.opt-else:hover{ color:var(--accent-a); border-color:var(--accent); border-style:solid; background:rgba(255,255,255,.65); }
+.thinking{ display:inline-flex; gap:5px; align-items:center; padding:5px 0; }
+.thinking span{ width:7px; height:7px; border-radius:50%; background:var(--accent); opacity:.4; animation:bounce 1.2s infinite ease-in-out; }
+.thinking span:nth-child(2){ animation-delay:.18s; } .thinking span:nth-child(3){ animation-delay:.36s; }
+@keyframes bounce{ 0%,80%,100%{ transform:translateY(0); opacity:.35; } 40%{ transform:translateY(-5px); opacity:1; } }
+.err-card{ border:1px solid #e7bcb6; background:var(--danger-t); color:#7d2620; border-radius:var(--r8); padding:14px var(--s16); font-size:var(--t14); }
+.err-card .et{ font-weight:700; margin-bottom:3px; color:var(--danger); }
+.err-card .actions{ margin-top:10px; display:flex; gap:var(--s8); flex-wrap:wrap; }
+
+/* ---- Composer + escape hatch ---- */
+.composer-wrap{ background:linear-gradient(to top, var(--bg) 72%, rgba(244,245,247,0)); padding:var(--s12) var(--s16) var(--s16); }
+.composer-inner{ max-width:760px; margin:0 auto; }
+.eh-row{ display:none; justify-content:center; margin-bottom:var(--s8); }
+.eh-row.show{ display:flex; }
+.eh-btn{ background:var(--surface); border:1px solid var(--line); color:var(--accent-a); border-radius:var(--rFull); padding:7px 14px; font-size:var(--t14); font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:all .12s; }
+.eh-btn:hover{ border-color:var(--accent); background:var(--accent-t); }
+.eh-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.composer{ background:var(--surface); border:1.5px solid var(--line); border-radius:var(--r16); box-shadow:var(--e1); padding:9px 9px 9px var(--s16); display:flex; align-items:flex-end; gap:var(--s8); transition:border-color .15s, box-shadow .15s; }
+.composer:focus-within{ border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-t); }
+.composer textarea{ flex:1 1 auto; border:none; resize:none; outline:none; background:transparent; font-family:inherit; line-height:1.5; max-height:160px; padding:8px 0; color:var(--ink); }
+.composer textarea::placeholder{ color:#9aa3b2; }
+.send-btn{ flex:0 0 auto; width:42px; height:42px; border-radius:var(--r12); border:none; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; transition:background .15s, transform .05s; }
+.send-btn:hover{ background:var(--accent-h); } .send-btn:active{ transform:translateY(1px); }
+.send-btn:disabled{ background:#c3cad8; cursor:not-allowed; }
+.composer-hint{ max-width:760px; margin:var(--s8) auto 0; font-size:var(--t12); color:var(--muted); display:flex; justify-content:space-between; gap:var(--s16); }
+.composer-hint .nokey{ color:var(--danger); font-weight:500; }
+
+/* ---- Brief output ---- */
+.brief-view{ display:none; }
+.brief-topline{ display:flex; align-items:center; gap:var(--s8); flex-wrap:wrap; margin-bottom:var(--s16); }
+.ready-badge{ display:inline-flex; align-items:center; gap:6px; background:var(--ok-t); color:#1d7a51; border:1px solid #c2e4d2; border-radius:var(--rFull); padding:5px 12px; font-size:var(--t14); font-weight:600; }
+.ready-badge .led{ width:8px; height:8px; border-radius:50%; background:var(--ok); }
+.brief-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r16); box-shadow:var(--e2); padding:var(--s24) clamp(var(--s16),3vw,36px) var(--s32); }
+.brief-doc{ font-size:var(--t16); color:var(--ink); max-width:var(--readw); }
+.brief-doc h1{ font-family:var(--font-display); font-weight:600; font-size:var(--t28); letter-spacing:-.01em; margin:4px 0 var(--s12); }
+.brief-doc h2{ font-weight:700; font-size:var(--t12); letter-spacing:.07em; text-transform:uppercase; color:var(--accent-a); margin:var(--s24) 0 var(--s8); padding-bottom:6px; border-bottom:1px solid var(--line); }
+.brief-doc h2:first-child,.brief-doc h1:first-child{ margin-top:0; }
+.brief-doc h3{ font-weight:700; font-size:var(--t16); margin:var(--s16) 0 6px; }
+.brief-doc p{ margin:6px 0; line-height:1.6; }
+.brief-doc ul,.brief-doc ol{ margin:6px 0; padding-left:var(--s24); }
+.brief-doc li{ margin:5px 0; line-height:1.55; }
+.brief-doc strong{ font-weight:700; color:var(--ink); }
+.brief-doc code{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em; background:var(--accent-t); color:var(--accent-a); padding:.1em .35em; border-radius:5px; }
+.reveal>*{ opacity:0; transform:translateY(8px); animation:rise .5s ease forwards; }
+.reveal>*:nth-child(1){ animation-delay:.02s; } .reveal>*:nth-child(2){ animation-delay:.06s; } .reveal>*:nth-child(3){ animation-delay:.1s; }
+.reveal>*:nth-child(4){ animation-delay:.14s; } .reveal>*:nth-child(5){ animation-delay:.18s; } .reveal>*:nth-child(n+6){ animation-delay:.22s; }
+@keyframes rise{ to{ opacity:1; transform:none; } }
+.brief-foot{ margin-top:var(--s16); display:flex; gap:var(--s8); flex-wrap:wrap; align-items:center; }
+.brief-foot .spacer{ flex:1 1 auto; }
+
+/* ---- Overlays / modals ---- */
+.overlay{ position:fixed; inset:0; background:rgba(20,24,33,.55); display:flex; align-items:center; justify-content:center; padding:var(--s16); z-index:50; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+.overlay.open{ opacity:1; pointer-events:auto; }
+.modal{ background:var(--surface); border-radius:var(--r16); box-shadow:var(--e2); width:100%; max-width:480px; max-height:92vh; overflow-y:auto; transform:translateY(10px) scale(.99); transition:transform .22s cubic-bezier(.2,.8,.2,1); }
+.overlay.open .modal{ transform:none; }
+.modal-head{ display:flex; align-items:center; justify-content:space-between; padding:var(--s16) var(--s24) var(--s4); }
+.modal-head h2{ font-family:var(--font-display); font-weight:600; font-size:var(--t22); margin:0; }
+.modal-body{ padding:var(--s8) var(--s24) var(--s24); }
+.field{ margin-bottom:var(--s16); }
+.field>label{ display:block; font-weight:600; font-size:var(--t14); margin-bottom:6px; }
+.field .sub{ font-size:var(--t14); color:var(--muted); margin:-2px 0 8px; }
+.text-input,.key-row input{ width:100%; border:1.5px solid var(--line); border-radius:var(--r8); padding:11px var(--s12); background:#fcfcfd; color:var(--ink); min-height:44px; transition:border-color .15s, box-shadow .15s; }
+.text-input:focus,.key-row input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-t); }
+.key-row{ display:flex; gap:var(--s8); }
+.key-row input{ flex:1 1 auto; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:var(--t14); }
+.seg{ display:flex; gap:var(--s8); }
+.seg label{ flex:1 1 0; border:1.5px solid var(--line); border-radius:var(--r8); padding:11px var(--s12); cursor:pointer; transition:border-color .15s, background .15s; }
+.seg label:hover{ background:#fbfbfd; }
+.seg input{ position:absolute; opacity:0; width:0; height:0; }
+.seg label.sel{ border-color:var(--accent); background:var(--accent-t); }
+.seg .pname{ font-weight:600; font-size:var(--t14); display:flex; align-items:center; gap:6px; }
+.seg .pdesc{ font-size:var(--t12); color:var(--muted); margin-top:2px; }
+.seg .tag{ font-size:var(--t12); font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--accent-a); background:#fff; border:1px solid var(--accent-t); border-radius:5px; padding:1px 5px; }
+.trust{ display:flex; gap:8px; align-items:flex-start; background:var(--accent-t); border:1px solid #d6ddff; border-radius:var(--r8); padding:11px var(--s12); font-size:var(--t14); color:#33406b; line-height:1.5; margin-top:var(--s8); }
+.trust svg{ flex:0 0 auto; margin-top:1px; }
+.getkey{ font-size:var(--t14); margin-top:var(--s8); }
+.getkey summary{ cursor:pointer; color:var(--accent-a); font-weight:600; }
+.getkey ol{ margin:var(--s8) 0 0; padding-left:18px; color:var(--muted); line-height:1.6; }
+.getkey a{ font-weight:600; }
+.validate-msg{ font-size:var(--t14); margin-top:var(--s8); display:flex; align-items:center; gap:6px; min-height:20px; }
+.validate-msg.ok{ color:#1d7a51; font-weight:600; }
+.validate-msg.bad{ color:var(--danger); }
+.settings-section{ border-top:1px solid var(--line); margin-top:var(--s16); padding-top:var(--s16); }
+.settings-row{ display:flex; gap:var(--s8); flex-wrap:wrap; }
+
+/* ---- Walkthrough ---- */
+.wt-modal{ max-width:460px; overflow:hidden; }
+.wt-stage{ position:relative; padding:var(--s32) var(--s24) var(--s12); text-align:center; }
+.wt-slide{ display:none; } .wt-slide.active{ display:block; animation:wtIn .35s ease; }
+@keyframes wtIn{ from{ opacity:0; transform:translateX(14px); } to{ opacity:1; transform:none; } }
+.wt-art{ height:118px; display:flex; align-items:center; justify-content:center; margin-bottom:var(--s16); }
+.wt-slide h2{ font-family:var(--font-display); font-weight:600; font-size:var(--t22); line-height:1.15; margin:4px 0 var(--s8); letter-spacing:-.01em; }
+.wt-slide p{ color:var(--muted); margin:0 auto; max-width:36ch; font-size:var(--t16); }
+.wt-key{ text-align:left; }
+.wt-key h2{ text-align:center; }
+.wt-skip{ position:absolute; top:14px; right:var(--s16); z-index:2; }
+.wt-foot{ display:flex; align-items:center; justify-content:space-between; padding:var(--s16) var(--s24) var(--s24); }
+.wt-dots{ display:flex; gap:6px; }
+.wt-dots i{ width:8px; height:8px; border-radius:50%; background:var(--line); transition:all .2s; }
+.wt-dots i.on{ background:var(--accent); width:22px; border-radius:5px; }
+
+.toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:11px var(--s16); border-radius:var(--r8); font-size:var(--t14); box-shadow:var(--e2); opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:80; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
+.scrim{ position:fixed; inset:0; background:rgba(20,24,33,.45); z-index:39; opacity:0; pointer-events:none; transition:opacity .2s; }
+.scrim.open{ opacity:1; pointer-events:auto; }
+
+@media (max-width: 820px){
+  .sidebar{ position:fixed; top:0; bottom:0; left:0; z-index:40; transform:translateX(-100%); transition:transform .25s ease; box-shadow:var(--e2); }
+  .sidebar.open{ transform:none; }
+  .menu-btn{ display:flex; }
+  .view{ padding:var(--s16); }
+}
+@media (max-width: 480px){
+  .mode-grid{ grid-template-columns:1fr; }
+  .composer-hint .right-hint{ display:none; }
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+  .reveal>*{ opacity:1; transform:none; }
+}
+</style>
+<style id="theme-dark">
+/* =========================================================================
+   DARK PREMIUM THEME — matches the brand (violet -> blue gradient on near-black),
+   with real glassmorphism. Appended so it overrides the base theme cleanly.
+   ========================================================================= */
+:root{
+  --e1: 0 1px 2px rgba(40,30,80,.06), 0 1px 2px rgba(40,30,80,.04);
+  --e2: 0 22px 50px rgba(60,45,120,.16), 0 6px 16px rgba(60,45,120,.08);
+  --bg:#F5F4FB; --bg-deep:#0A0912; --surface:#FFFFFF; --surface-2:#F3F1FA;
+  --ink:#1A1828; --ink-2:#4C4866; --muted:#6E6A88; --line:#E8E5F3;
+  --violet:#2E54E8; --blue:#3B6BFF;
+  --accent:#3559E0; --accent-h:#2A48C8; --accent-a:#2A47C0; --accent-t:rgba(53,89,224,.10);
+  --grad:linear-gradient(135deg,#2E54E8 0%,#4AA0FF 100%);
+  --ok:#1FA46F; --ok-t:#E6F6EF; --warn:#B5740E; --warn-t:#FBF1DD;
+  --danger:#D33A3A; --danger-t:#FCEEEE;
+}
+body{ background:radial-gradient(1100px 560px at 50% -10%, rgba(53,89,224,.10), transparent 62%), var(--bg); }
+::selection{ background:rgba(53,89,224,.18); }
+
+/* brand / logo — dark badge so the logo reads on the light sidebar */
+.brandmark{ justify-content:center; margin-bottom:var(--s12); padding:6px 4px; }
+.logo{ width:100%; max-width:150px; height:auto; display:block; margin:0 auto; }
+
+/* light sidebar */
+.sidebar{ background:#FFFFFF; border-right:1px solid var(--line); color:var(--ink); }
+.history-head,.history-empty{ color:var(--muted); }
+.hist-item{ color:var(--ink-2); }
+.hist-item:hover{ background:rgba(53,89,224,.06); }
+.hist-item.active{ background:rgba(53,89,224,.12); }
+.hist-item.active::before{ background:var(--accent); }
+.hist-item .mode{ color:var(--accent-a); }
+.hist-item .t{ color:var(--ink); }
+.hist-item .d{ color:var(--muted); }
+.who .nm{ color:var(--ink); }
+.who:hover{ background:rgba(53,89,224,.07); }
+.icon-btn{ color:var(--muted); }
+.icon-btn:hover{ background:rgba(53,89,224,.08); color:var(--accent-a); }
+.sidebar-foot{ border-top:1px solid var(--line); }
+.avatar{ background:var(--grad); color:#fff; }
+
+/* topbar / chips */
+.topbar{ background:rgba(245,244,251,.82); border-bottom:1px solid var(--line); }
+.chip{ background:var(--surface); border-color:var(--line); }
+.chip:hover{ background:#faf9fe; }
+.chip .led{ background:#b9b4cc; box-shadow:0 0 0 3px rgba(53,89,224,.08); }
+
+/* buttons — gradient primaries */
+.btn{ background:var(--surface); border-color:var(--line); color:var(--ink); }
+.btn:hover{ background:#faf9fe; }
+.btn-primary,.new-btn,.send-btn{ background:var(--grad); border:none; color:#fff; box-shadow:0 8px 20px rgba(53,89,224,.28); }
+.btn-primary:hover,.new-btn:hover,.send-btn:hover{ filter:brightness(1.06); background:var(--grad); }
+.send-btn:disabled{ background:#cfc9e6; box-shadow:none; }
+.btn-danger{ color:var(--danger); border-color:var(--line); background:var(--surface); }
+.btn-danger:hover{ background:var(--danger-t); border-color:#e9b9b9; }
+
+/* hero / accents */
+.eyebrow{ background:var(--accent-t); color:var(--accent-a); }
+.hero h1 em,.picker-head h1 em{ background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
+.chip-ex{ background:var(--surface); border-color:var(--line); color:var(--muted); }
+.chip-ex:hover{ border-color:var(--accent); color:var(--accent-a); background:var(--accent-t); }
+
+/* picker cards */
+.mode-card{ background:var(--surface); border-color:var(--line); }
+.mode-card.enabled:hover{ border-color:var(--accent); box-shadow:0 12px 30px rgba(53,89,224,.14); }
+.mode-ico{ background:var(--accent-t); color:var(--accent-a); }
+
+/* transcript */
+.bubble{ color:var(--ink); }
+.turn-user .node{ border-color:#b3aecb; } .turn-user .node::after{ background:#4c4866; }
+.composer-wrap{ background:linear-gradient(to top, var(--bg) 70%, rgba(245,244,251,0)); }
+
+/* GLASS — frosted light answer bar */
+.answer-bar{ background:rgba(255,255,255,.62); -webkit-backdrop-filter:blur(18px) saturate(1.5); backdrop-filter:blur(18px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.9); box-shadow:0 14px 40px rgba(70,50,130,.16), inset 0 1px 0 rgba(255,255,255,.9); }
+.answer-label{ color:var(--muted); }
+.opt{ background:#fff; border:1.5px solid var(--line); color:var(--ink); }
+.opt:hover{ background:var(--accent-t); border-color:var(--accent); color:var(--accent-a); }
+.opt-else{ background:transparent; color:var(--muted); border-color:var(--line); border-style:dashed; }
+.opt-else:hover{ background:var(--accent-t); color:var(--accent-a); border-color:var(--accent); border-style:solid; }
+
+/* GLOWING composer — pulses on focus/typing, flares when a message is sent */
+.composer{ background:rgba(255,255,255,.72); -webkit-backdrop-filter:blur(14px) saturate(1.4); backdrop-filter:blur(14px) saturate(1.4); border:1.5px solid var(--line);
+  transition:border-color .3s ease, box-shadow .35s ease; }
+.composer textarea{ color:var(--ink); }
+.composer textarea::placeholder{ color:#9a96b3; }
+.composer:focus-within{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(53,89,224,.16), 0 0 24px 3px rgba(53,89,224,.32); animation:composerGlow 2.6s ease-in-out infinite; }
+@keyframes composerGlow{
+  0%,100%{ box-shadow:0 0 0 4px rgba(53,89,224,.12), 0 0 18px 1px rgba(53,89,224,.28), 0 0 26px 4px rgba(59,107,255,.18); }
+  50%{ box-shadow:0 0 0 4px rgba(53,89,224,.18), 0 0 30px 5px rgba(53,89,224,.42), 0 0 44px 10px rgba(59,107,255,.28); } }
+.composer.flash{ animation:composerFlash .6s ease; }
+@keyframes composerFlash{ 0%{ box-shadow:0 0 0 6px rgba(53,89,224,.3), 0 0 50px 14px rgba(53,89,224,.6), 0 0 70px 22px rgba(59,107,255,.4); } 100%{ box-shadow:0 0 0 0 rgba(53,89,224,0); } }
+
+/* brief output */
+.brief-card{ background:var(--surface); border-color:var(--line); }
+.brief-doc h2{ color:var(--accent-a); border-bottom-color:var(--line); }
+.brief-doc code{ background:var(--accent-t); color:var(--accent-a); }
+.ready-badge{ background:var(--ok-t); color:#13784f; border-color:#bfe6d4; }
+
+/* modals + glass */
+.overlay{ background:rgba(30,22,60,.42); }
+.modal{ background:rgba(255,255,255,.92); -webkit-backdrop-filter:blur(22px) saturate(1.3); backdrop-filter:blur(22px) saturate(1.3); border:1px solid rgba(255,255,255,.9); box-shadow:var(--e2); }
+.text-input,.key-row input{ background:#faf9fe; border-color:var(--line); color:var(--ink); }
+.seg label{ border-color:var(--line); }
+.seg label:hover{ background:#faf9fe; }
+.seg .tag{ background:#fff; border-color:var(--accent-t); color:var(--accent-a); }
+.trust{ background:var(--accent-t); border-color:#cdd9f7; color:var(--ink-2); }
+.getkey ol{ color:var(--muted); }
+.validate-msg.ok{ color:#13784f; }
+.err-card{ background:var(--danger-t); border-color:#eebcbc; color:#8f2a2a; }
+.err-card .et{ color:var(--danger); }
+.wt-dots i{ background:#dcd8ec; }
+.wt-dots i.on{ background:var(--accent); }
+
+/* toast */
+.toast{ background:var(--ink); color:#fff; border:none; }
+.scrim{ background:rgba(30,22,60,.4); }
+@keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(53,89,224,.4); } 50%{ box-shadow:0 0 0 6px rgba(53,89,224,0); } }
+.searching{ font-size:var(--t12); color:var(--muted); margin-left:8px; }
+.toggle-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--s16); cursor:pointer; }
+.switch{ -webkit-appearance:none; appearance:none; width:42px; height:24px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; transition:background .2s; flex:0 0 auto; }
+.switch:checked{ background:var(--accent); }
+.switch::after{ content:""; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .2s; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+.switch:checked::after{ left:20px; }
+/* ---------- extra polish: depth, gradient icon tiles, lift on hover ---------- */
+body{ background:radial-gradient(820px 460px at 12% -8%, rgba(53,89,224,.10), transparent 60%), radial-gradient(980px 560px at 88% -4%, rgba(59,107,255,.12), transparent 60%), var(--bg); }
+.picker-head h1,.hero h1{ font-size:clamp(2rem,5vw,2.7rem); letter-spacing:-.025em; }
+.picker-head p,.hero p{ font-size:1.12rem; }
+.mode-card{ background:linear-gradient(180deg,#ffffff 0%,#fbfaff 100%); transition:transform .18s ease, box-shadow .2s ease, border-color .15s ease; }
+.mode-card.enabled:hover{ transform:translateY(-3px); border-color:var(--accent); box-shadow:0 18px 40px rgba(53,89,224,.18); }
+.mode-ico{ background:var(--grad); color:#fff; box-shadow:0 6px 16px rgba(53,89,224,.32); }
+.brief-card{ background:linear-gradient(180deg,#ffffff 0%,#fbfaff 100%); }
+.btn-primary:hover,.new-btn:hover,.send-btn:hover{ transform:translateY(-1px); }
+.chip-ex:hover{ transform:translateY(-1px); }
+.answer-bar{ box-shadow:0 16px 46px rgba(53,89,224,.16), inset 0 1px 0 rgba(255,255,255,.95); }
+.ready-badge{ box-shadow:0 4px 14px rgba(31,164,111,.18); }
+</style>
+<style id="theme-vibrant">
+/* =========================================================================
+   VIBRANT GLASS THEME — a colourful violet→blue→peach mesh-gradient canvas
+   with frosted-glass surfaces. Appended last so it cleanly overrides the
+   earlier themes without touching any behaviour.
+   ========================================================================= */
+:root{
+  --grad:linear-gradient(135deg,#7B5BFF 0%,#5C7CFF 52%,#7FA8FF 100%);
+  --accent:#5B61F0; --accent-h:#4A50E6; --accent-a:#4A46DE; --accent-t:rgba(91,97,240,.12);
+}
+
+/* ---- The colourful canvas (shows through every frosted surface) ---- */
+body{
+  background:
+    radial-gradient(820px 620px at 6% -4%, rgba(165,138,255,.62), transparent 60%),
+    radial-gradient(960px 720px at 98% 4%, rgba(132,164,255,.55), transparent 60%),
+    radial-gradient(820px 760px at 102% 104%, rgba(255,201,165,.5), transparent 56%),
+    radial-gradient(820px 640px at -6% 108%, rgba(196,170,255,.46), transparent 60%),
+    linear-gradient(135deg,#E7E2FB 0%,#DFE7FF 42%,#EEE6FB 70%,#FCE7D8 100%);
+  background-attachment:fixed;
+}
+.main{ background:transparent; }
+
+.brandmark{ background:transparent; }
+
+/* ---- Frosted translucent sidebar ---- */
+.sidebar{
+  background:rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
+  border-right:1px solid rgba(255,255,255,.6);
+}
+.sidebar-foot{ border-top:1px solid rgba(120,110,170,.16); }
+.hist-item:hover{ background:rgba(91,97,240,.08); }
+.hist-item.active{ background:rgba(91,97,240,.14); }
+
+/* ---- Frosted topbar + status chip ---- */
+.topbar{
+  background:rgba(255,255,255,.32);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4); backdrop-filter:blur(20px) saturate(1.4);
+  border-bottom:1px solid rgba(255,255,255,.5);
+}
+.topbar-title .dot{ background:var(--grad); }
+.chip{
+  background:rgba(255,255,255,.55); border-color:rgba(255,255,255,.72);
+  -webkit-backdrop-filter:blur(12px) saturate(1.3); backdrop-filter:blur(12px) saturate(1.3);
+}
+.chip:hover{ background:rgba(255,255,255,.72); }
+.chip.ok .led{ background:#34D399; box-shadow:0 0 0 3px rgba(52,211,153,.22); }
+
+/* ---- Picker heading + sparkles ---- */
+.picker-head h1{ position:relative; display:inline-block; }
+.picker-head h1 em,.hero h1 em{
+  background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
+}
+.spk{ position:absolute; top:-14px; right:-46px; overflow:visible; }
+.spk .s{ transform-origin:center; }
+.spk .s-a{ fill:#6E7BFF; animation:twinkle 2.6s ease-in-out infinite; }
+.spk .s-b{ fill:#9A7BFF; animation:twinkle 2.6s ease-in-out .5s infinite; }
+.spk .s-c{ fill:#7FA8FF; animation:twinkle 2.6s ease-in-out 1s infinite; }
+@keyframes twinkle{ 0%,100%{ opacity:.45; transform:scale(.82); } 50%{ opacity:1; transform:scale(1.06); } }
+
+/* ---- Frosted-glass mode cards with an arrow affordance ---- */
+.mode-grid{ gap:var(--s16); }
+.mode-card{
+  background:rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(22px) saturate(1.5); backdrop-filter:blur(22px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.65);
+  box-shadow:0 12px 34px rgba(80,70,160,.12), inset 0 1px 0 rgba(255,255,255,.6);
+  padding:var(--s16) 54px var(--s16) var(--s16);
+}
+.mode-card.enabled:hover{
+  background:rgba(255,255,255,.66); border-color:rgba(255,255,255,.95);
+  transform:translateY(-3px); box-shadow:0 22px 48px rgba(91,97,240,.22), inset 0 1px 0 rgba(255,255,255,.7);
+}
+.mode-ico{ background:var(--grad); color:#fff; box-shadow:0 8px 18px rgba(91,97,240,.36); }
+.mode-card .ml{ color:var(--ink); }
+.mode-arrow{
+  position:absolute; right:16px; top:50%; transform:translateY(-50%);
+  width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  color:var(--accent-a); background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.85);
+  transition:background .15s ease, color .15s ease, transform .15s ease;
+}
+.mode-card.enabled:hover .mode-arrow{ background:var(--grad); color:#fff; transform:translateY(-50%) translateX(3px); box-shadow:0 6px 14px rgba(91,97,240,.4); }
+.mode-card.disabled .mode-arrow{ opacity:.4; }
+
+/* ---- New-chat button + send button pick up the brighter gradient ---- */
+.new-btn,.send-btn,.btn-primary{ background:var(--grad); box-shadow:0 10px 22px rgba(91,97,240,.3); }
+
+/* ---- Frosted glass on the floating answer bar / composer / modals ---- */
+.answer-bar{ background:rgba(255,255,255,.58); border-color:rgba(255,255,255,.85); }
+.composer{ background:rgba(255,255,255,.62); border-color:rgba(255,255,255,.7); }
+.composer-wrap{ background:linear-gradient(to top, rgba(247,245,253,.92) 62%, rgba(247,245,253,0)); }
+.modal{ background:rgba(255,255,255,.9); border:1px solid rgba(255,255,255,.85); }
+
+/* ---- Brief card sits as a clean frosted sheet over the colour ---- */
+.brief-card{
+  background:rgba(255,255,255,.72);
+  -webkit-backdrop-filter:blur(20px) saturate(1.3); backdrop-filter:blur(20px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.75);
+}
+
+@media (max-width: 480px){
+  .spk{ display:none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar" aria-label="Your briefs">
+    <div class="sidebar-head">
+      <div class="brandmark">
+        <img class="logo" id="brandLogo" src="data:image/webp;base64,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" alt="Made-Up" />
+        <span class="word sr-only" id="brandWord">Made-Up</span>
+      </div>
+      <button class="new-btn" id="newBtn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        New chat
+      </button>
+    </div>
+    <div class="history-head">Your briefs</div>
+    <div class="history" id="history" role="list"></div>
+    <div class="sidebar-foot">
+      <button class="who" id="whoBtn" type="button" title="Your profile &amp; key"><div class="avatar" id="avatar">M</div><span class="nm" id="whoName">You</span></button>
+      <button class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.4"/></svg>
+      </button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <div class="topbar-title"><span class="dot"></span> <span id="topTitle">Home</span></div>
+      <div class="spacer"></div>
+      <button class="chip" id="statusChip" title="Provider & key settings"><span class="led"></span><span id="chipText">No key yet</span></button>
+    </div>
+
+    <div class="scroll" id="scroll">
+      <!-- MODE PICKER -->
+      <section class="view picker-view" id="pickerView">
+        <div class="picker-head">
+          <h1 id="pickerTitle">What are we <em>making</em>?<svg class="spk" width="46" height="40" viewBox="0 0 46 40" fill="none" aria-hidden="true"><path class="s s-a" d="M12 4l1.9 5.1L19 11l-5.1 1.9L12 18l-1.9-5.1L5 11l5.1-1.9z"/><path class="s s-b" d="M31 14l1.2 3.2L35.4 18.4l-3.2 1.2L31 23l-1.2-3.4L26.6 18.4l3.2-1.2z"/><path class="s s-c" d="M37 4l.8 2.2L40 7l-2.2.8L37 10l-.8-2.2L34 7l2.2-.8z"/></svg></h1>
+          <p>Pick what you want to turn into a clear, paste-ready prompt or brief.</p>
+        </div>
+        <div class="mode-grid" id="modeGrid"></div>
+      </section>
+
+      <!-- INTERVIEW -->
+      <section class="view interview-view" id="interviewView">
+        <div class="hero" id="hero">
+          <span class="eyebrow"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 13 L7 8 L10 10 L13 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> From rough idea to ready-to-paste</span>
+          <h1 id="heroTitle">What do you want to <em>build</em>?</h1>
+          <p id="heroSub">Tell me your idea in a sentence or two. I'll ask the sharp questions a senior engineer would — one at a time — then hand you a clean brief to paste into your AI builder.</p>
+          <div class="examples" id="examples" aria-label="Example ideas"></div>
+        </div>
+        <div class="transcript" id="transcript" style="display:none" aria-live="polite"></div>
+      </section>
+
+      <!-- BRIEF -->
+      <section class="view brief-view" id="briefView">
+        <div class="brief-topline">
+          <span class="ready-badge"><span class="led"></span> <span id="readyText">Your build brief is ready</span></span>
+        </div>
+        <div class="brief-card"><div class="brief-doc" id="briefDoc"></div></div>
+        <div class="brief-foot">
+          <button class="btn btn-primary" id="copyBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.8"/></svg> <span id="copyLabel">Copy brief</span></button>
+          <button class="btn" id="downloadBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Download .md</button>
+          <button class="btn" id="refineBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20v-4l10-10 4 4L8 20H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 6l4 4" stroke="currentColor" stroke-width="1.8"/></svg> Refine</button>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost" id="startOverBtn">Start a new chat</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- COMPOSER -->
+    <div class="composer-wrap" id="composerWrap">
+      <div class="composer-inner">
+        <div class="answer-bar" id="answerBar" aria-label="Quick answers"></div>
+        <div class="eh-row" id="ehRow">
+          <button class="eh-btn" id="ehBtn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg> I think you have enough — generate it now</button>
+        </div>
+        <form class="composer" id="composer" autocomplete="off">
+          <textarea id="input" rows="1" placeholder="Describe your idea…" aria-label="Your message"></textarea>
+          <button class="send-btn" id="sendBtn" type="submit" aria-label="Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </form>
+        <div class="composer-hint">
+          <span class="right-hint">Enter to send · Shift+Enter for a new line</span>
+          <span id="hintRight"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <div class="modal-head"><h2 id="settingsTitle">Settings</h2><button class="icon-btn" id="settingsClose" aria-label="Close" style="color:var(--muted)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="nameInput">Email or phone <span style="color:var(--muted);font-weight:400">(stays on this device)</span></label>
+        <input class="text-input" id="nameInput" type="text" placeholder="you@email.com or +1 555 000 1234" maxlength="60" />
+      </div>
+      <div class="field">
+        <label>AI provider</label>
+        <div class="sub" id="settingsProviderSub">Made-Up talks directly to whichever you pick. Both have a free tier.</div>
+        <div class="seg" id="providerSeg">
+          <label data-provider="gemini"><input type="radio" name="provider" value="gemini" /><div class="pname">Gemini <span class="tag">Recommended</span></div><div class="pdesc">Smarter, plus reliable web search.</div></label>
+          <label data-provider="groq"><input type="radio" name="provider" value="groq" /><div class="pname">Groq <span class="tag">Fast</span></div><div class="pdesc">Fastest replies, free.</div></label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="keyInput">Your <span id="keyProviderName">Groq</span> API key</label>
+        <div class="key-row"><input id="keyInput" type="password" placeholder="Paste your key…" spellcheck="false" /><button class="btn btn-sm" id="keyToggle" type="button" aria-label="Show or hide key">Show</button></div>
+        <div class="validate-msg" id="settingsValidateMsg" role="status"></div>
+        <div class="trust"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="#4E7BF5" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="#4E7BF5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Your key is saved <strong>only in this browser</strong> and is sent <strong>only directly to <span id="trustProvider">Groq</span></strong> — never to any server we run. It's remembered on this device, so you won't be asked again.</span></div>
+        <div class="settings-row" style="margin-top:10px"><button class="btn btn-primary btn-sm" id="keySave" type="button">Save &amp; test key</button><button class="btn btn-danger btn-sm" id="keyClear" type="button">Clear key</button></div>
+      </div>
+      <div class="field"><label class="toggle-row" for="searchToggle"><span><span style="font-weight:600">Search the web for accuracy</span><span class="sub" style="display:block;margin-top:2px">Look things up while interviewing — sharper questions &amp; better tips.</span></span><input type="checkbox" id="searchToggle" class="switch" /></label></div>
+      <div class="settings-section"><div class="settings-row"><button class="btn btn-sm" id="replayWalkthrough" type="button">Show the intro again</button><button class="btn btn-danger btn-sm" id="clearAll" type="button">Clear all local data</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- WALKTHROUGH -->
+<div class="overlay" id="wtOverlay" role="dialog" aria-modal="true" aria-label="Welcome to Made-Up">
+  <div class="modal wt-modal">
+    <button class="btn btn-ghost btn-sm wt-skip" id="wtSkip">Skip intro</button>
+    <div class="wt-stage">
+      <div class="wt-slide active" data-step="0">
+        <div class="wt-art"><svg width="180" height="110" viewBox="0 0 180 110" fill="none" aria-hidden="true"><g opacity="0.3"><circle cx="22" cy="24" r="4" fill="rgba(255,255,255,.20)"/><circle cx="50" cy="70" r="4" fill="rgba(255,255,255,.20)"/><circle cx="30" cy="90" r="4" fill="rgba(255,255,255,.20)"/><circle cx="68" cy="30" r="4" fill="rgba(255,255,255,.20)"/><circle cx="44" cy="44" r="4" fill="rgba(255,255,255,.20)"/></g><path d="M104 78 L124 50 L140 62 L160 28" stroke="#4E7BF5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="104" cy="78" r="5" fill="#fff" stroke="#4E7BF5" stroke-width="3"/><circle cx="124" cy="50" r="5" fill="#fff" stroke="#4E7BF5" stroke-width="3"/><circle cx="140" cy="62" r="5" fill="#fff" stroke="#4E7BF5" stroke-width="3"/><circle cx="160" cy="28" r="5" fill="#34D399" stroke="#34D399" stroke-width="3"/><path d="M82 53 h14 M89 46 v14" stroke="#9aa3b2" stroke-width="2.4" stroke-linecap="round"/></svg></div>
+        <h2>You have an idea. <span class="pn">Made-Up</span> makes it clear.</h2>
+        <p>It asks you a few smart questions and turns your idea into a clear prompt you can paste into any AI builder.</p>
+      </div>
+      <div class="wt-slide" data-step="1">
+        <div class="wt-art"><svg width="180" height="110" viewBox="0 0 180 110" fill="none" aria-hidden="true"><rect x="34" y="22" width="112" height="26" rx="8" fill="rgba(124,99,242,.18)" stroke="#4E7BF5" stroke-width="2"/><rect x="46" y="56" width="88" height="14" rx="7" fill="rgba(255,255,255,.07)"/><rect x="46" y="78" width="64" height="14" rx="7" fill="rgba(255,255,255,.07)"/><circle cx="150" cy="63" r="3" fill="#4E7BF5"/><circle cx="160" cy="63" r="3" fill="#4E7BF5" opacity=".6"/><circle cx="170" cy="63" r="3" fill="#4E7BF5" opacity=".3"/></svg></div>
+        <h2>Just answer in plain words</h2>
+        <p>No tech knowledge needed. One question at a time. If you're not sure, <span class="pn">Made-Up</span> gives you options to pick from.</p>
+      </div>
+      <div class="wt-slide" data-step="2">
+        <div class="wt-art"><svg width="180" height="110" viewBox="0 0 180 110" fill="none" aria-hidden="true"><rect x="52" y="14" width="76" height="82" rx="8" fill="#fff" stroke="rgba(255,255,255,.14)" stroke-width="2"/><rect x="62" y="26" width="40" height="7" rx="3.5" fill="#1A1F2B"/><rect x="62" y="42" width="56" height="5" rx="2.5" fill="#4E7BF5"/><rect x="62" y="54" width="48" height="5" rx="2.5" fill="rgba(255,255,255,.20)"/><rect x="62" y="64" width="52" height="5" rx="2.5" fill="rgba(255,255,255,.20)"/><rect x="62" y="78" width="36" height="5" rx="2.5" fill="#4E7BF5"/><circle cx="128" cy="22" r="9" fill="#34D399"/><path d="M124 22l3 3 5-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h2>Get a clean brief</h2>
+        <p>At the end you get a structured brief — copy it into Cursor, Lovable, v0, or Claude and it builds the <em>right</em> thing.</p>
+      </div>
+      <div class="wt-slide" data-step="3">
+        <div class="wt-art"><svg width="180" height="110" viewBox="0 0 180 110" fill="none" aria-hidden="true"><path d="M90 22l22 9v14c0 14-9 25-22 31-13-6-22-17-22-31V31l22-9z" fill="rgba(124,99,242,.18)" stroke="#4E7BF5" stroke-width="2.4" stroke-linejoin="round"/><path d="M82 55l5 5 11-12" stroke="#4E7BF5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h2>Free &amp; private</h2>
+        <p><span class="pn">Made-Up</span> runs on your own AI key, so it's free and your idea never touches our servers. Let's set that up — it takes about 2 minutes.</p>
+      </div>
+      <!-- INSTAGRAM (optional, skippable) -->
+      <div class="wt-slide" data-step="4">
+        <div class="wt-art"><svg width="74" height="74" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#4E7BF5" stroke-width="1.6"/><circle cx="12" cy="12" r="4" stroke="#4E7BF5" stroke-width="1.6"/><circle cx="17" cy="7" r="1.3" fill="#34D399"/></svg></div>
+        <h2>Follow Made-Up on Instagram</h2>
+        <p>Tips, examples, and updates at <strong>@madeupai_</strong>. Totally optional — skip if you like.</p>
+        <a class="btn btn-primary" href="https://www.instagram.com/madeupai_?igsh=OW84aHJhZ2kwamk0" target="_blank" rel="noopener" style="margin-top:var(--s16)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="7" r="1.2" fill="currentColor"/></svg> Follow on Instagram</a>
+        <div style="margin-top:10px"><button class="btn btn-ghost btn-sm" id="igSkip" type="button">No thanks, continue</button></div>
+      </div>
+      <!-- KEY STEP -->
+      <div class="wt-slide wt-key" data-step="5">
+        <h2>Sign in to Made-Up</h2>
+        <div class="field" style="margin-top:var(--s12)">
+          <label for="wtName">Email or phone <span style="color:var(--muted);font-weight:400">(stays on this device)</span></label>
+          <input class="text-input" id="wtName" type="text" placeholder="you@email.com or +1 555 000 1234" maxlength="60" autocomplete="username" />
+        </div>
+        <div class="field" style="margin-top:var(--s16)">
+          <label>Choose a provider</label>
+          <div class="seg" id="wtProviderSeg">
+            <label data-provider="gemini"><input type="radio" name="wtprovider" value="gemini" /><div class="pname">Gemini <span class="tag">Recommended</span></div><div class="pdesc">Smarter, plus best web search.</div></label>
+            <label data-provider="groq"><input type="radio" name="wtprovider" value="groq" /><div class="pname">Groq <span class="tag">Fast</span></div><div class="pdesc">Fastest, free, no card.</div></label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="wtKeyInput">Paste your <span id="wtKeyProvider">Groq</span> key</label>
+          <div class="key-row"><input id="wtKeyInput" type="password" placeholder="Paste your key…" spellcheck="false" /><button class="btn btn-sm btn-primary" id="wtValidate" type="button">Connect</button></div>
+          <div class="validate-msg" id="wtValidateMsg" role="status"></div>
+          <details class="getkey" id="wtGetKey">
+            <summary>Don't have a key? Get one free</summary>
+            <ol id="wtKeySteps"></ol>
+          </details>
+          <div class="trust"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" stroke="#4E7BF5" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="#4E7BF5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Your key stays <strong>only in this browser</strong> and is sent only to your provider. The free tier is plenty to start — a rate limit just means "wait a minute and retry".</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="wt-foot">
+      <div class="wt-dots" id="wtDots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="settings-row" style="gap:var(--s8)"><button class="btn btn-sm" id="wtBack" style="visibility:hidden">Back</button><button class="btn btn-primary btn-sm" id="wtNext">Next</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   EDITABLE CONSTANTS — tune these freely.
+   ========================================================================= */
+
+/* Product name — used everywhere the name appears (single source of truth). */
+const PRODUCT_NAME = "Made-Up";
+
+/* MODEL NAMES — swap for any current chat model.
+   Groq:   https://console.groq.com/docs/models
+   Gemini: https://ai.google.dev/gemini-api/docs/models */
+const GROQ_MODEL   = "llama-3.3-70b-versatile";
+const GEMINI_MODEL = "gemini-2.0-flash";
+
+/* The model emits this on its own line when the interview is done. */
+const GROQ_SEARCH_MODEL = "groq/compound";   // Groq model with built-in web search (older alias: "compound-beta")
+const SENTINEL = "===BRIEF_READY===";
+/* The model emits this (its own line) when it plays its understanding back,
+   BEFORE the brief. The UI enforces a real playback turn before it will accept
+   any brief — so the highest-accuracy step is guaranteed in code, not just asked
+   for in the prompt. */
+const PLAYBACK_TAG = "===PLAYBACK===";
+/* When a question has a few likely answers, the model lists them after this
+   marker; the UI turns them into tappable chips (plus a "Something else…"). */
+const OPTIONS_TAG = "===OPTIONS===";
+/* Appended to every mode's system prompt so any mode can offer tap-to-answer
+   options. Edit this to change when/how options appear. */
+const OPTIONS_INSTRUCTION = `OFFERING TAP-TO-ANSWER OPTIONS — do this whenever a question has a small, predictable set of answers (yes/no, this-or-that, or a short list). Write your one question normally, then on a new line put ${"==="}OPTIONS${"==="} on its own line, then each option on its own line — 2 to 5 of them, each only a few words. Do not number them, and do not add an "other" or "something else" option (the app adds that for you). Example:
+
+Who is this mainly for?
+${"==="}OPTIONS${"==="}
+Just me
+Me and a few friends
+Anyone who signs up
+
+Only offer options when they truly fit; for open-ended questions, just ask with no marker. Never attach options to your playback message or to the final output. The marker and its options belong to the SAME question message.`;
+const SEARCH_INSTRUCTION = `You can search the web. When current facts or a recommendation (tools, platforms, pricing, real-world examples, best practices) would be more accurate with up-to-date information, look it up and let what you find shape your next question and the final result. Prefer accurate, specific guidance over guesses, and keep using plain language.`;
+const TEMPERATURE = 0.6;
+
+/* -------------------------------------------------------------------------
+   THE BRAIN — interview system prompt for the "app" mode. This is the product.
+   Confidence-gated (not count-gated), with a playback check before finishing.
+   ------------------------------------------------------------------------- */
+const APP_SYSTEM_PROMPT = `You are a senior product engineer running a short, friendly requirements interview with someone who has an app idea but cannot fully specify it. They are often NOT technical (a "vibe coder", a founder, a hobbyist). Your job is to ask the sharp questions a senior engineer would ask — the things they did not know to think about — then produce a clean build brief they can paste into an AI app builder.
+
+REASON ABOUT CONFIDENCE — DO NOT COUNT QUESTIONS.
+Silently track, for each dimension below, whether it is CLEAR or still UNCLEAR. Each turn, ask about the BIGGEST current gap — never just the next item on a list. Keep going until you are genuinely confident the build is understood, and stop as soon as you are. A simple idea may need only 4 to 5 questions.
+Dimensions to understand:
+1. Target user and the core problem.
+2. The core action / loop — the single main thing a user does, and what happens right after.
+3. The 3 to 5 key screens.
+4. The data stored and shown, in plain terms (users, posts, items, bookings...).
+5. Accounts and privacy — do people log in? Is each person's data private, or shared / public?
+6. Edge, empty, and error expectations. Users never raise these; YOU must.
+7. v1 scope — push them to cut; what can wait until version 2.
+
+HOW TO ASK (follow all):
+- Exactly ONE question per turn. Always. Never bundle two questions.
+- Infer aggressively. If an answer makes something obvious, briefly state your inference instead of asking.
+- Never re-ask anything already answered or implied.
+- Plain, warm language. No jargon; if a concept is needed, give a one-line example.
+- Concrete, not abstract: ask "what happens right after someone opens the app?" not "what is your engagement loop?"
+- A short acknowledgement, then the question. No speeches.
+
+WHEN THE USER IS VAGUE OR SAYS "I DON'T KNOW":
+Do not push them to invent. Offer 2 to 3 concrete options to react to — "Do you mean A, B, or C?" Reacting is far easier than generating for someone who is unsure.
+
+IF THEY CONTRADICT something said earlier, gently point it out and ask which is right.
+
+PLAYBACK CHECK BEFORE FINISHING — this is the most important step, do it every time:
+When you think you have enough, do NOT jump to the brief. Send a SEPARATE message that begins with this marker on its very own line:
+${"==="}PLAYBACK${"==="}
+then play your understanding back in 4 to 6 plain sentences, starting with "Here's what I think you're building:", and end by asking "Did I get this right, or is anything off?" Then STOP and wait for their reply. Never put the brief in the same message as the playback. Incorporate any corrections (you may play it back again), and only once they confirm should you write the brief in your next message.
+
+SOFT CEILING: If you are past roughly 8 to 9 exchanges and still not confident, proactively offer control: "I have a solid picture — want me to draft it now, or keep refining?"
+
+GENERATE NOW: If the user asks you to generate now (or a message says to generate it now with what you know), skip further questions and the playback, produce the best brief you can from what is known, and briefly note any assumptions you had to make.
+
+WHEN READY (after they confirm your playback, or when asked to generate now), output the sentinel on its own line:
+${"==="}BRIEF_READY${"==="}
+then immediately the brief in GitHub-flavored markdown using EXACTLY these headings, in order:
+
+## App in one line
+## Who it's for
+## Core features
+## Screens
+## Data model
+## Auth approach
+## v1 scope
+## Suggested tech
+
+BRIEF RULES:
+- Core features: bulleted, most important first.
+- Screens: one bullet each as "**Screen name** — its one-line purpose".
+- Data model: plain language — what is stored and how things relate. No SQL, no code.
+- v1 scope: two short sub-lists, "**In v1:**" and "**Save for later:**". Be ruthless about what waits.
+- Suggested tech: a sensible default stack for a beginner using an AI builder, stated simply, with a few words on why.
+- Make confident, specific recommendations. Where they were vague, choose a sensible default and note it briefly as an assumption.
+- Keep it tight and skimmable. It is a build brief, not an essay.
+
+STRICT OUTPUT RULES:
+- Before the sentinel, output only your single next question, your playback message, or a brief acknowledgement — nothing else.
+- The playback and the brief are ALWAYS separate messages. Never put ${"==="}PLAYBACK${"==="} and ${"==="}BRIEF_READY${"==="} in the same message.
+- Only emit the brief sentinel when you are actually delivering the final brief, and write nothing after the brief.`;
+
+/* -------------------------------------------------------------------------
+   OTHER MODES — same interview engine, different domain. Each mode is just a
+   system prompt that runs one-question-at-a-time, plays understanding back
+   (===PLAYBACK===), then emits the output (===BRIEF_READY===). Adding another
+   mode is literally: append one object to MODES.
+   ------------------------------------------------------------------------- */
+const IMAGE_SYSTEM_PROMPT = `You are an art director helping someone turn a rough visual idea into a precise prompt for an AI image generator (Midjourney, DALL·E, Stable Diffusion, etc.). They may not know the vocabulary. Ask ONE question per turn, in plain language, and offer concrete options whenever they are unsure (for example: "more like a photograph, a painting, or a 3D render?").
+
+Understand, asking about the biggest gap first: the subject and focal point; the style and medium; composition and framing; lighting and mood; colour palette; level of detail/realism; and the aspect ratio / use. Infer the obvious; never re-ask.
+
+Before finishing, send a SEPARATE message that begins with ${"==="}PLAYBACK${"==="} on its own line, play your understanding back in a few plain sentences, and ask "Did I get this right, or is anything off?" Then wait. Only once they confirm (or ask you to generate now) output, in a new message, the sentinel on its own line:
+${"==="}BRIEF_READY${"==="}
+then the result in markdown with EXACTLY these headings:
+
+## The image in one line
+## Subject & focus
+## Style & medium
+## Composition & framing
+## Lighting & mood
+## Colour palette
+## Technical (aspect ratio, detail)
+## Ready-to-paste prompt
+
+The last section must be a single vivid paragraph the user can paste straight into an image tool. Keep everything tight.`;
+
+const VIDEO_SYSTEM_PROMPT = `You are a video director helping someone turn a rough clip idea into a precise prompt for an AI video generator (Runway, Pika, Kling, Veo, Sora, etc.). They may not know the vocabulary. Ask ONE question per turn, in plain language, and offer concrete options whenever they are unsure (for example: "should the camera hold still, slowly push in, or follow the subject?").
+
+Understand, asking about the biggest gap first: the subject and the action happening; the setting and time of day; the camera (shot size and any movement); the visual style or reference look; lighting and mood; pacing and rough length; and the aspect ratio (16:9 wide or 9:16 vertical). Infer the obvious; never re-ask. If they are unsure, suggest sensible defaults.
+
+Before finishing, send a SEPARATE message that begins with ${"==="}PLAYBACK${"==="} on its own line, play your understanding back in a few plain sentences, and ask "Did I get this right, or is anything off?" Then wait. Only once they confirm (or ask you to generate now) output, in a new message, the sentinel on its own line:
+${"==="}BRIEF_READY${"==="}
+then the result in markdown with EXACTLY these headings:
+
+## The clip in one line
+## Subject & action
+## Setting
+## Camera & movement
+## Style & look
+## Lighting & mood
+## Pacing & length
+## Ready-to-paste prompt
+
+The last section must be one vivid paragraph the user can paste straight into a video tool, ending with the aspect ratio. Keep everything tight. Never put ${"==="}PLAYBACK${"==="} and ${"==="}BRIEF_READY${"==="} in the same message.`;
+
+const SCRIPT_SYSTEM_PROMPT = `You are a short-form video writer helping someone turn a topic into a tight, ready-to-shoot script (TikTok, Reels, YouTube Shorts, etc.). Ask ONE question per turn, in plain language, and offer concrete options whenever they are unsure (for example: "is the goal to teach something, tell a story, or sell a product?").
+
+Understand, asking about the biggest gap first: the topic and angle; who it's for; the platform and rough length; the goal (educate, entertain, or sell); the tone; the single most important takeaway or call to action; and anything they definitely want included. Infer the obvious; never re-ask.
+
+Before finishing, send a SEPARATE message that begins with ${"==="}PLAYBACK${"==="} on its own line, play your understanding back in a few plain sentences, and ask "Did I get this right, or is anything off?" Then wait. Only once they confirm (or ask you to generate now) output, in a new message, the sentinel on its own line:
+${"==="}BRIEF_READY${"==="}
+then the script in markdown with EXACTLY these headings:
+
+## The video in one line
+## Who it's for
+## Hook (first 3 seconds)
+## Script
+## Call to action
+## Caption & hashtags
+## Length & format
+
+Under "Script", write it beat by beat with short spoken lines and brief [on-screen / b-roll] notes in brackets. Keep it punchy and natural. Never put ${"==="}PLAYBACK${"==="} and ${"==="}BRIEF_READY${"==="} in the same message.`;
+
+const WEBSITE_SYSTEM_PROMPT = `You are a senior web designer and engineer helping someone turn a rough website idea into a clear brief they can paste into an AI website builder (Lovable, v0, Framer, Webflow, etc.). They are often not technical. Ask ONE question per turn, in plain language, and offer concrete options whenever they are unsure (for example: "is this mainly to show your work, collect sign-ups, or sell something?").
+
+Understand, asking about the biggest gap first: what the site is for and who it's for; the single most important thing a visitor should do (the main call to action); the key pages or sections (home, about, pricing, contact, blog...); the content and assets they already have or still need (text, images, a logo); the look and feel and any brand colours; whether anything is interactive (a contact form, booking, sign-in, payments); and v1 scope — push them to cut what can wait.
+
+Before finishing, send a SEPARATE message that begins with ${"==="}PLAYBACK${"==="} on its own line, play your understanding back in a few plain sentences, and ask "Did I get this right, or is anything off?" Then wait. Only once they confirm (or ask you to generate now) output, in a new message, the sentinel on its own line:
+${"==="}BRIEF_READY${"==="}
+then the brief in markdown with EXACTLY these headings:
+
+## Site in one line
+## Who it's for
+## Pages & sections
+## The main action
+## Content & assets
+## Look & feel
+## v1 scope
+## Suggested platform
+
+Pages & sections: one bullet each as "**Name** — its purpose". v1 scope: two short sub-lists, "**In v1:**" and "**Save for later:**". Suggested platform: a beginner-friendly choice with a few words why. Make confident recommendations and note assumptions briefly. Never put ${"==="}PLAYBACK${"==="} and ${"==="}BRIEF_READY${"==="} in the same message.`;
+
+const OTHER_SYSTEM_PROMPT = `You are a sharp, friendly expert who helps someone turn ANY rough idea into a clear, paste-ready prompt or brief for whatever AI tool fits — even when it doesn't fit a neat category (a song, a logo, a business plan, a game, an email, a workout plan, a recipe, a name...).
+
+FIRST, work out what they are actually trying to make. Then ask the questions a real expert in THAT area would ask. ONE question per turn, in plain language. Infer the obvious; never re-ask; offer 2 to 3 concrete options whenever they seem unsure. The right questions depend entirely on what they're making, so adapt — dig into who or what it's for, the goal, the key constraints, the tone or style, and what "good" looks like for this specific thing.
+
+Before finishing, send a SEPARATE message that begins with ${"==="}PLAYBACK${"==="} on its own line, play your understanding back in a few plain sentences, and ask "Did I get this right, or is anything off?" Then wait. Only once they confirm (or ask you to generate now) output, in a new message, the sentinel on its own line:
+${"==="}BRIEF_READY${"==="}
+then a clean, tightly-structured brief in markdown, with headings that genuinely fit what they're making. Always: start with "## In one line"; give the most important specifics their own short sections; and end with "## Ready-to-paste prompt" — one or two paragraphs they can paste straight into the AI tool of their choice. Keep it tight and skimmable. Never put ${"==="}PLAYBACK${"==="} and ${"==="}BRIEF_READY${"==="} in the same message.`;
+
+/* MODES — the engine runs whichever is active. Append an object to add a mode. */
+const MODES = [
+  {
+    id:"app", label:"App idea", tagline:"Turn a vague app idea into a build brief",
+    enabled:true, outputTitle:"Build brief", readyText:"Your build brief is ready",
+    copyLabel:"Copy brief", heroTitle:"What do you want to <em>build</em>?",
+    heroSub:"Tell me your idea in a sentence or two. I'll ask the sharp questions a senior engineer would — one at a time — then hand you a clean brief to paste into your AI builder.",
+    examples:["A habit tracker for my friends","A marketplace for local bakers","An app to plan group trips"],
+    icon:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    systemPrompt: APP_SYSTEM_PROMPT,
+  },
+  {
+    id:"image", label:"Image prompt", tagline:"Turn a rough visual idea into a precise image prompt",
+    enabled:true, outputTitle:"Image prompt", readyText:"Your image prompt is ready",
+    copyLabel:"Copy prompt", heroTitle:"What do you want to <em>picture</em>?",
+    heroSub:"Describe the image you have in mind. I'll ask about style, light, and framing, then write a precise prompt.",
+    examples:["A cozy reading nook at golden hour","A bold logo for a coffee brand","A watercolor fox in a forest"], icon:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="10" r="1.7" stroke="currentColor" stroke-width="1.6"/><path d="M5 17l4-4 3 3 3-4 4 5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    systemPrompt: IMAGE_SYSTEM_PROMPT,
+  },
+  { id:"video", label:"Video prompt", tagline:"Shape a clip idea into a prompt for AI video tools",
+    enabled:true, outputTitle:"Video prompt", readyText:"Your video prompt is ready", copyLabel:"Copy prompt",
+    heroTitle:"What do you want to <em>film</em>?", heroSub:"Describe the clip you imagine. I'll ask about the shot, motion, and mood, then write a precise prompt.",
+    examples:["A drone shot over misty mountains at dawn","A cat slowly knocking a cup off a table","A neon city street in the rain"],
+    icon:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M16 10l5-3v10l-5-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    systemPrompt: VIDEO_SYSTEM_PROMPT },
+  { id:"script", label:"Video script", tagline:"Turn a topic into a tight short-form script",
+    enabled:true, outputTitle:"Script", readyText:"Your script is ready", copyLabel:"Copy script",
+    heroTitle:"What's the <em>script</em> about?", heroSub:"Tell me the topic. I'll ask who it's for and what it's for, then write a tight, ready-to-shoot script.",
+    examples:["Why you should drink more water","3 tips for first-time renters","A day in the life of a baker"],
+    icon:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 3h9l4 4v14H6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    systemPrompt: SCRIPT_SYSTEM_PROMPT },
+  { id:"website", label:"Website idea", tagline:"Turn a website idea into a clear build brief",
+    enabled:true, outputTitle:"Website brief", readyText:"Your website brief is ready", copyLabel:"Copy brief",
+    heroTitle:"What <em>website</em> do you want?", heroSub:"Tell me about the site. I'll ask about its pages, audience, and the main action, then write a clear brief.",
+    examples:["A portfolio for my photography","A landing page for my app","A simple site for my bakery"],
+    icon:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/><circle cx="6.5" cy="6.6" r="1" fill="currentColor"/></svg>',
+    systemPrompt: WEBSITE_SYSTEM_PROMPT },
+  { id:"other", label:"Other", tagline:"Turn any idea into a clear, paste-ready prompt",
+    enabled:true, outputTitle:"Brief", readyText:"Your brief is ready", copyLabel:"Copy",
+    heroTitle:"What do you want to <em>make</em>?", heroSub:"Describe anything you're trying to make — I'll figure out the right questions and write a clear prompt for it.",
+    examples:["A logo for my bakery","A 30-day fitness plan","A name for my startup"],
+    icon:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M18.5 14l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    systemPrompt: OTHER_SYSTEM_PROMPT },
+];
+
+/* =========================================================================
+   STORAGE
+   ========================================================================= */
+const LS = { onboarded:"gw.onboarded", provider:"gw.provider", keyGroq:"gw.key.groq", keyGemini:"gw.key.gemini", name:"gw.name", history:"gw.history", search:"gw.search" };
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const state = {
+  provider: lsGet(LS.provider,"gemini"),
+  name: lsGet(LS.name,""),
+  webSearch: lsGet(LS.search,"1")!=="0",
+  searchUnavailable: false,
+  modeId: "app",
+  messages: [],
+  phase: "picker",            // 'picker' | 'interview' | 'brief'
+  history: loadHistory(),
+  currentBrief: null,
+  activeHistoryId: null,
+  streaming: false,
+  playbackDone: false,   // set true once a real playback turn has happened
+  forceGenerate: false,  // set by the "generate it now" escape hatch
+  gatedOnce: false,      // safety valve so the playback gate never loops
+};
+function loadHistory(){ try{ return JSON.parse(lsGet(LS.history,"[]"))||[]; }catch(e){ return []; } }
+function saveHistory(){ lsSet(LS.history, JSON.stringify(state.history.slice(0,60))); }
+function activeMode(){ return MODES.find(m=>m.id===state.modeId) || MODES[0]; }
+function modeById(id){ return MODES.find(m=>m.id===id); }
+
+/* =========================================================================
+   PROVIDERS
+   ========================================================================= */
+const PROVIDERS = {
+  groq:   { label:"Groq",   keyLS:LS.keyGroq,   keyUrl:"https://console.groq.com/keys",
+            steps:["Open the Groq Console","Sign up — free, no credit card","Create an API key","Copy it and paste it here"] },
+  gemini: { label:"Gemini", keyLS:LS.keyGemini, keyUrl:"https://aistudio.google.com/apikey",
+            steps:["Open Google AI Studio","Sign in with your Google account","Click “Get API key”","Copy it and paste it here"] },
+};
+function providerLabel(p){ return PROVIDERS[p||state.provider].label; }
+function getKey(p){ return lsGet(PROVIDERS[p||state.provider].keyLS,"").trim(); }
+function setKey(val,p){ const w=PROVIDERS[p||state.provider]; if(val) lsSet(w.keyLS,val); else lsDel(w.keyLS); }
+function hasAnyKey(){ return !!getKey(); }
+
+/* =========================================================================
+   DOM
+   ========================================================================= */
+const $=(id)=>document.getElementById(id);
+const el={ sidebar:$("sidebar"),scrim:$("scrim"),menuBtn:$("menuBtn"),history:$("history"),newBtn:$("newBtn"),
+  avatar:$("avatar"),whoName:$("whoName"),whoBtn:$("whoBtn"),settingsBtn:$("settingsBtn"),statusChip:$("statusChip"),chipText:$("chipText"),
+  topTitle:$("topTitle"),scroll:$("scroll"),brandWord:$("brandWord"),
+  pickerView:$("pickerView"),pickerTitle:$("pickerTitle"),modeGrid:$("modeGrid"),
+  interviewView:$("interviewView"),hero:$("hero"),heroTitle:$("heroTitle"),heroSub:$("heroSub"),examples:$("examples"),transcript:$("transcript"),
+  briefView:$("briefView"),briefDoc:$("briefDoc"),readyText:$("readyText"),copyBtn:$("copyBtn"),copyLabel:$("copyLabel"),downloadBtn:$("downloadBtn"),refineBtn:$("refineBtn"),startOverBtn:$("startOverBtn"),
+  composerWrap:$("composerWrap"),composer:$("composer"),input:$("input"),sendBtn:$("sendBtn"),hintRight:$("hintRight"),ehRow:$("ehRow"),ehBtn:$("ehBtn"),answerBar:$("answerBar"),
+  settingsOverlay:$("settingsOverlay"),settingsClose:$("settingsClose"),providerSeg:$("providerSeg"),keyInput:$("keyInput"),keyToggle:$("keyToggle"),keySave:$("keySave"),keyClear:$("keyClear"),
+  keyProviderName:$("keyProviderName"),trustProvider:$("trustProvider"),settingsValidateMsg:$("settingsValidateMsg"),settingsProviderSub:$("settingsProviderSub"),nameInput:$("nameInput"),searchToggle:$("searchToggle"),replayWalkthrough:$("replayWalkthrough"),clearAll:$("clearAll"),
+  wtOverlay:$("wtOverlay"),wtSkip:$("wtSkip"),wtBack:$("wtBack"),wtNext:$("wtNext"),wtDots:$("wtDots"),igSkip:$("igSkip"),wtName:$("wtName"),
+  wtProviderSeg:$("wtProviderSeg"),wtKeyInput:$("wtKeyInput"),wtKeyProvider:$("wtKeyProvider"),wtValidate:$("wtValidate"),wtValidateMsg:$("wtValidateMsg"),wtGetKey:$("wtGetKey"),wtKeySteps:$("wtKeySteps"),
+  toast:$("toast") };
+
+/* =========================================================================
+   MARKDOWN (tiny, safe — escapes first so model output is inert)
+   ========================================================================= */
+function escapeHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function inlineMd(s){ s=escapeHtml(s); s=s.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>"); s=s.replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>"); s=s.replace(/`([^`]+)`/g,"<code>$1</code>"); return s; }
+function renderMarkdown(md){
+  const lines=(md||"").replace(/\r/g,"").split("\n"); let html="",lt=null;
+  const close=()=>{ if(lt){ html+=(lt==="ul"?"</ul>":"</ol>"); lt=null; } };
+  for(const raw of lines){ const line=raw.replace(/\s+$/,""); if(!line.trim()){ close(); continue; } let m;
+    if((m=line.match(/^###\s+(.*)/))){ close(); html+="<h3>"+inlineMd(m[1])+"</h3>"; }
+    else if((m=line.match(/^##\s+(.*)/))){ close(); html+="<h2>"+inlineMd(m[1])+"</h2>"; }
+    else if((m=line.match(/^#\s+(.*)/))){ close(); html+="<h1>"+inlineMd(m[1])+"</h1>"; }
+    else if((m=line.match(/^\s*[-*+]\s+(.*)/))){ if(lt!=="ul"){ close(); html+="<ul>"; lt="ul"; } html+="<li>"+inlineMd(m[1])+"</li>"; }
+    else if((m=line.match(/^\s*\d+[.)]\s+(.*)/))){ if(lt!=="ol"){ close(); html+="<ol>"; lt="ol"; } html+="<li>"+inlineMd(m[1])+"</li>"; }
+    else { close(); html+="<p>"+inlineMd(line.trim())+"</p>"; } }
+  close(); return html;
+}
+
+/* =========================================================================
+   NETWORKING
+   ========================================================================= */
+function httpUserMessage(status,detail){ const p=providerLabel();
+  if(status===401||status===403) return "That API key didn't work. Check you pasted the full "+p+" key for the right provider.";
+  if(status===429) return "You're going faster than the free tier allows. Wait a minute, then try again.";
+  if(status===404) return "The model wasn't found on "+p+". The model name may have changed — update it in the code.";
+  if(status>=500) return p+" is having trouble right now. Give it a moment and try again.";
+  if(status===400) return "The request was rejected by "+p+(detail?(": "+detail):"")+".";
+  return "Something went wrong talking to "+p+" (error "+status+")."; }
+async function readDetail(res){ let d=""; try{ const j=await res.json(); d=(j&&j.error&&(j.error.message||j.error))||""; }catch(_){ try{ d=(await res.text()).slice(0,200); }catch(__){} } return typeof d==="string"?d:""; }
+
+function reqFor(provider, key, systemPrompt, messages, opts){
+  opts=opts||{};
+  if(provider==="groq"){
+    return { url:"https://api.groq.com/openai/v1/chat/completions",
+      init:{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+key },
+        body:JSON.stringify(Object.assign({ model:opts.search?GROQ_SEARCH_MODEL:GROQ_MODEL, temperature:TEMPERATURE,
+          messages:[{role:"system",content:systemPrompt}].concat(messages) }, opts.stream?{stream:true}:{}, opts.max?{max_tokens:opts.max}:{})) },
+      extract:(o)=> (o.choices&&o.choices[0]&&o.choices[0].delta&&o.choices[0].delta.content)||"" };
+  }
+  return { url:"https://generativelanguage.googleapis.com/v1beta/models/"+GEMINI_MODEL+(opts.stream?":streamGenerateContent?alt=sse&key=":":generateContent?key=")+encodeURIComponent(key),
+    init:{ method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ ...(opts.search?{tools:[{google_search:{}}]}:{}), systemInstruction:{parts:[{text:systemPrompt}]},
+        contents:messages.map(m=>({ role:m.role==="assistant"?"model":"user", parts:[{text:m.content}] })),
+        generationConfig:Object.assign({temperature:TEMPERATURE}, opts.max?{maxOutputTokens:opts.max}:{}) }) },
+    extract:(o)=>{ try{ return (o.candidates[0].content.parts||[]).map(p=>p.text||"").join(""); }catch(_){ return ""; } } };
+}
+
+async function readStream(res, extract, onToken){
+  const reader=res.body.getReader(), dec=new TextDecoder(); let buf="",full="";
+  while(true){ const {done,value}=await reader.read(); if(done) break; buf+=dec.decode(value,{stream:true}); let nl;
+    while((nl=buf.indexOf("\n"))>=0){ let line=buf.slice(0,nl); buf=buf.slice(nl+1); line=line.replace(/\r$/,"").trim();
+      if(!line||!line.startsWith("data:")) continue; const data=line.slice(5).trim(); if(data==="[DONE]"){ buf=""; break; }
+      try{ const tok=extract(JSON.parse(data)); if(tok){ full+=tok; onToken(tok,full); } }catch(_){} } }
+  return full;
+}
+function searchOn(){ return state.webSearch && !state.searchUnavailable; }
+async function streamChat(messages, onToken){
+  const key=getKey(); if(!key){ const e=new Error("no-key"); e.userMessage="Add your API key in Settings first."; throw e; }
+  const sys = activeMode().systemPrompt+"\n\n"+OPTIONS_INSTRUCTION+(searchOn()?"\n\n"+SEARCH_INSTRUCTION:"");
+  const attempts = searchOn() ? [true,false] : [false];   // try web-search model, fall back to the base model
+  for(let i=0;i<attempts.length;i++){
+    const useSearch=attempts[i], last=(i===attempts.length-1);
+    const r=reqFor(state.provider, key, sys, messages, {stream:true, search:useSearch});
+    let res;
+    try{ res=await fetch(r.url,r.init); }
+    catch(_){ if(!last) continue; const e=new Error("network"); e.userMessage="Couldn't reach "+providerLabel()+". Check your internet connection and try again."; throw e; }
+    if(!res.ok){ if(useSearch){ state.searchUnavailable=true; continue; } const e=new Error("http"); e.userMessage=httpUserMessage(res.status, await readDetail(res)); throw e; }
+    if(!res.body){ const t=await res.text(); if(useSearch && !t.trim()){ state.searchUnavailable=true; continue; } onToken(t,t); return t; }
+    const full=await readStream(res, r.extract, onToken);
+    if(useSearch && !full.trim()){ state.searchUnavailable=true; continue; }   // search model returned nothing usable -> fall back
+    return full;
+  }
+  return "";
+}
+
+/* Validate a key with one tiny request → {ok} or {ok:false,message}. */
+async function validateKey(provider, key){
+  const { url, init } = reqFor(provider, key, "ping", [{role:"user",content:"Reply with: ok"}], {max:1});
+  let res; try{ res=await fetch(url,init); }catch(_){ return {ok:false,message:"Couldn't reach "+providerLabel(provider)+". Check your connection."}; }
+  if(res.ok) return {ok:true};
+  return {ok:false, message:httpUserMessage(res.status, await readDetail(res))};
+}
+
+/* =========================================================================
+   TRANSCRIPT
+   ========================================================================= */
+function clearTranscript(){ el.transcript.innerHTML=""; }
+function showHero(show){ el.hero.style.display=show?"":"none"; el.transcript.style.display=show?"none":""; }
+function addTurn(role){
+  const turn=document.createElement("div"); turn.className="turn "+(role==="user"?"turn-user":"turn-bot");
+  const node=document.createElement("div"); node.className="node"; node.setAttribute("aria-hidden","true"); turn.appendChild(node);
+  const label=document.createElement("div"); label.className="who-label"; label.textContent=role==="user"?(state.name||"You"):PRODUCT_NAME; turn.appendChild(label);
+  const bubble=document.createElement("div"); bubble.className="bubble"; turn.appendChild(bubble);
+  el.transcript.appendChild(turn); return { turn, bubble };
+}
+function scrollToBottom(){ el.scroll.scrollTop=el.scroll.scrollHeight; }
+function setThinking(bubble){ bubble.innerHTML='<span class="thinking" aria-label="'+PRODUCT_NAME+' is thinking"><span></span><span></span><span></span></span>'+(searchOn()?'<span class="searching">searching the web for accuracy…</span>':''); }
+
+/* =========================================================================
+   VIEWS
+   ========================================================================= */
+function setTop(t){ el.topTitle.textContent=t; }
+function showPicker(){
+  state.phase="picker"; el.pickerView.style.display="block"; el.interviewView.style.display="none"; el.briefView.style.display="none";
+  el.composerWrap.style.display="none"; setTop("Home"); renderModes(); scrollTop();
+}
+function showInterview(){
+  state.phase="interview"; el.pickerView.style.display="none"; el.interviewView.style.display="block"; el.briefView.style.display="none";
+  el.composerWrap.style.display=""; setTop(activeMode().label); updateEscapeHatch();
+}
+function showBrief(){
+  state.phase="brief"; el.pickerView.style.display="none"; el.interviewView.style.display="none"; el.briefView.style.display="block";
+  el.composerWrap.style.display="none"; el.readyText.textContent=activeMode().readyText; el.copyLabel.textContent=activeMode().copyLabel; setTop(activeMode().outputTitle);
+  el.refineBtn.style.display=state.messages.some(m=>m.role==="assistant")?"":"none";   // only when there's a live conversation to refine
+  scrollTop();
+}
+function scrollTop(){ el.scroll.scrollTop=0; }
+function refineBrief(){
+  state.currentBrief=null; state.activeHistoryId=null; renderHistory();
+  showInterview(); showHero(false); setComposerEnabled(true);
+  el.input.placeholder="Tell me what to change…"; updateEscapeHatch(); scrollToBottom(); setTimeout(()=>el.input.focus(),50);
+}
+function setBriefContent(md, animate){ state.currentBrief=state.currentBrief||{markdown:"",saved:false,modeId:state.modeId}; state.currentBrief.markdown=md; el.briefDoc.innerHTML=renderMarkdown(md); el.briefDoc.classList.toggle("reveal",!!animate); }
+
+function renderModes(){
+  el.modeGrid.innerHTML="";
+  for(const m of MODES){
+    const card=document.createElement(m.enabled?"button":"div");
+    card.className="mode-card "+(m.enabled?"enabled":"disabled");
+    if(m.enabled){ card.type="button"; card.addEventListener("click",()=>pickMode(m.id)); } else { card.setAttribute("aria-disabled","true"); }
+    const ico=document.createElement("div"); ico.className="mode-ico"; ico.innerHTML=m.icon; ico.setAttribute("aria-hidden","true");
+    const ml=document.createElement("div"); ml.className="ml"; ml.textContent=m.label;
+    if(!m.enabled){ const s=document.createElement("span"); s.className="soon"; s.textContent="Soon"; ml.appendChild(s); }
+    const mt=document.createElement("div"); mt.className="mt"; mt.textContent=m.tagline;
+    const arrow=document.createElement("div"); arrow.className="mode-arrow"; arrow.setAttribute("aria-hidden","true");
+    arrow.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    card.appendChild(ico); card.appendChild(ml); card.appendChild(mt); card.appendChild(arrow); el.modeGrid.appendChild(card);
+  }
+}
+function pickMode(id){ state.modeId=id; const m=activeMode(); el.heroTitle.innerHTML=personalizedHero(m); el.heroSub.textContent=m.heroSub; renderExamples(m); startNew(true); }
+function personalizedHero(m){ const nm=state.name&&state.name.trim(); if(m.id==="app"&&nm) return "What are we building, "+escapeHtml(nm.split(" ")[0])+"?"; return m.heroTitle; }
+function renderExamples(m){ el.examples.innerHTML=""; (m.examples||[]).forEach(t=>{ const b=document.createElement("button"); b.className="chip-ex"; b.type="button"; b.textContent=t; b.addEventListener("click",()=>{ el.input.value=t; autoGrow(); setComposerEnabled(true); el.input.focus(); }); el.examples.appendChild(b); }); }
+
+/* =========================================================================
+   INTERVIEW TURN
+   ========================================================================= */
+function setBusy(bubble,label){ bubble.innerHTML='<span class="thinking" aria-label="'+label+'"><span></span><span></span><span></span></span><span class="searching">'+escapeHtml(label)+(searchOn()?' — searching the web…':'…')+'</span>'; }
+/* What to show in the bubble while streaming: drop the brief + anything after it,
+   strip the playback marker (but keep its summary), and hide a half-typed marker. */
+function displayAssistant(acc){
+  let s = acc.split(SENTINEL)[0].split(OPTIONS_TAG)[0];
+  s = s.split(PLAYBACK_TAG).join("");
+  s = s.replace(/=+[A-Z_]*=*\s*$/,"");
+  return s.replace(/^\s+/,"");
+}
+function parseOptions(full){
+  const idx=full.indexOf(OPTIONS_TAG); if(idx<0) return [];
+  const block=full.slice(idx+OPTIONS_TAG.length).split(SENTINEL)[0].split(PLAYBACK_TAG)[0];
+  return block.split("\n").map(l=>l.replace(/^[\s\-*•\d.)]+/,"").trim()).filter(l=>l && l.length<=80).slice(0,5);
+}
+function showAnswerOptions(opts){
+  el.answerBar.innerHTML="";
+  const label=document.createElement("div"); label.className="answer-label"; label.textContent="Tap to answer"; el.answerBar.appendChild(label);
+  const row=document.createElement("div"); row.className="answer-opts";
+  opts.forEach(o=>{ const btn=document.createElement("button"); btn.className="opt"; btn.type="button"; btn.textContent=o;
+    btn.addEventListener("click",()=>{ if(state.streaming) return; hideAnswerOptions(); submitAnswer(o); }); row.appendChild(btn); });
+  const elseBtn=document.createElement("button"); elseBtn.className="opt opt-else"; elseBtn.type="button"; elseBtn.textContent="Type my own…";
+  elseBtn.addEventListener("click",()=>{ hideAnswerOptions(); el.input.placeholder="Type your answer…"; el.input.focus(); }); row.appendChild(elseBtn);
+  el.answerBar.appendChild(row); el.answerBar.classList.add("show"); el.input.placeholder="Tap an option above, or type…";
+}
+function hideAnswerOptions(){ el.answerBar.classList.remove("show"); el.answerBar.innerHTML=""; }
+async function runTurn(){
+  state.streaming=true; setComposerEnabled(false); updateEscapeHatch(); hideAnswerOptions();
+  const { turn, bubble }=addTurn("assistant"); turn.classList.add("live"); setThinking(bubble); scrollToBottom();
+  let started=false, sawSentinel=false;
+  try{
+    const full=await streamChat(state.messages,(tok,acc)=>{
+      if(!started) started=true;
+      if(acc.includes(SENTINEL)){ if(!sawSentinel){ sawSentinel=true; setBusy(bubble,"Putting your brief together"); scrollToBottom(); } }
+      else { bubble.textContent=displayAssistant(acc); scrollToBottom(); }
+    });
+    turn.classList.remove("live"); state.messages.push({role:"assistant",content:full});
+    const hasBrief=full.includes(SENTINEL), hasPlayback=full.includes(PLAYBACK_TAG);
+    if(hasBrief){
+      const accept = state.playbackDone || state.forceGenerate || state.gatedOnce;
+      if(accept){ const md=(full.split(SENTINEL)[1]||"").trim(); state.forceGenerate=false; showBrief(); finalizeBrief(md,true); }
+      else {
+        // PLAYBACK GATE: the model tried to skip the playback — refuse and make it do one.
+        state.gatedOnce=true; turn.remove();
+        state.messages.push({role:"user",content:"Hold on — before the brief, please play your understanding back to me in a few plain sentences and ask me to confirm. Don't write the brief yet."});
+        await runTurn(); return;
+      }
+    } else {
+      if(hasPlayback) state.playbackDone=true;
+      bubble.textContent=displayAssistant(full).trim()||"…";
+      const opts=parseOptions(full); if(opts.length) showAnswerOptions(opts);
+      scrollToBottom();
+    }
+  }catch(err){ turn.classList.remove("live"); renderError(bubble, err&&err.userMessage?err.userMessage:"Something went wrong. Try again."); scrollToBottom(); }
+  finally{ state.streaming=false; setComposerEnabled(true); updateEscapeHatch(); }
+}
+function renderError(bubble,message){
+  bubble.innerHTML="";
+  const card=document.createElement("div"); card.className="err-card";
+  const t=document.createElement("div"); t.className="et"; t.textContent="That didn't go through";
+  const m=document.createElement("div"); m.textContent=message;
+  const actions=document.createElement("div"); actions.className="actions";
+  const retry=document.createElement("button"); retry.className="btn btn-sm btn-primary"; retry.textContent="Try again";
+  const settings=document.createElement("button"); settings.className="btn btn-sm"; settings.textContent="Open settings";
+  retry.addEventListener("click",()=>{ if(state.streaming) return; bubble.closest(".turn").remove(); runTurn(); });
+  settings.addEventListener("click",()=>openSettings());
+  actions.appendChild(retry); actions.appendChild(settings);
+  card.appendChild(t); card.appendChild(m); card.appendChild(actions); bubble.appendChild(card);
+}
+function finalizeBrief(md,animate){
+  setBriefContent(md, animate!==false);
+  if(state.currentBrief&&!state.currentBrief.saved){
+    const item={ id:"b_"+Date.now().toString(36), modeId:state.modeId, title:briefTitle(md), markdown:md, createdAt:Date.now() };
+    state.history.unshift(item); state.currentBrief.saved=true; state.activeHistoryId=item.id; saveHistory(); renderHistory();
+  }
+}
+function briefTitle(md){
+  const lines=md.split("\n");
+  for(let i=0;i<lines.length;i++){ if(/^##\s+/.test(lines[i])){ for(let j=i+1;j<lines.length;j++){ const t=lines[j].replace(/^[#\-*\s>]+/,"").trim(); if(t) return t.slice(0,80); } break; } }
+  const fu=state.messages.find(m=>m.role==="user"); return fu?fu.content.slice(0,80):"Untitled";
+}
+
+/* =========================================================================
+   HISTORY
+   ========================================================================= */
+function renderHistory(){
+  el.history.innerHTML="";
+  if(!state.history.length){ const e=document.createElement("div"); e.className="history-empty"; e.textContent="Briefs you finish are saved here, on this device. Nothing leaves your browser."; el.history.appendChild(e); return; }
+  for(const item of state.history){
+    const m=modeById(item.modeId)||MODES[0];
+    const b=document.createElement("button"); b.className="hist-item"+(item.id===state.activeHistoryId?" active":""); b.setAttribute("role","listitem");
+    const ml=document.createElement("div"); ml.className="mode"; ml.innerHTML=m.icon+"<span>"+escapeHtml(m.label)+"</span>";
+    const t=document.createElement("div"); t.className="t"; t.textContent=item.title;
+    const d=document.createElement("div"); d.className="d"; d.textContent=relativeDate(item.createdAt);
+    b.appendChild(ml); b.appendChild(t); b.appendChild(d); b.addEventListener("click",()=>openHistory(item.id)); el.history.appendChild(b);
+  }
+}
+function relativeDate(ts){ const diff=Date.now()-ts,day=86400000;
+  if(diff<60000) return "just now"; if(diff<3600000) return Math.floor(diff/60000)+" min ago"; if(diff<day) return Math.floor(diff/3600000)+"h ago";
+  if(diff<2*day) return "yesterday"; if(diff<7*day) return Math.floor(diff/day)+" days ago"; return new Date(ts).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+function openHistory(id){ const item=state.history.find(x=>x.id===id); if(!item) return; state.activeHistoryId=id; state.modeId=item.modeId||"app"; state.messages=[]; state.currentBrief={markdown:item.markdown,saved:true,modeId:state.modeId}; showBrief(); setBriefContent(item.markdown,true); renderHistory(); closeSidebarMobile(); }
+
+/* =========================================================================
+   NEW CHAT
+   ========================================================================= */
+function startNew(intoInterview){
+  state.messages=[]; state.currentBrief=null; state.activeHistoryId=null; state.playbackDone=false; state.forceGenerate=false; state.gatedOnce=false;
+  clearTranscript(); hideAnswerOptions(); showHero(true); renderHistory();
+  el.input.value=""; autoGrow(); closeSidebarMobile(); renderHistory();
+  if(intoInterview){ showInterview(); setComposerEnabled(true); scrollTop(); setTimeout(()=>el.input.focus(),50); }
+  else { showPicker(); }
+}
+
+/* =========================================================================
+   COMPOSER + ESCAPE HATCH
+   ========================================================================= */
+function autoGrow(){ el.input.style.height="auto"; el.input.style.height=Math.min(el.input.scrollHeight,160)+"px"; }
+function setComposerEnabled(on){
+  const noKey=!getKey(); const enabled=on&&!noKey&&!state.streaming;
+  el.input.disabled=!on||state.streaming; el.sendBtn.disabled=!enabled||!el.input.value.trim();
+  el.hintRight.innerHTML=noKey?'<span class="nokey">No key yet — add one in Settings.</span>':"";
+  el.input.placeholder=state.messages.length?"Type your answer…":"Describe your idea…";
+}
+function updateEscapeHatch(){ const show=state.phase==="interview"&&state.messages.some(m=>m.role==="user")&&!state.streaming; el.ehRow.classList.toggle("show",show); el.ehBtn.disabled=state.streaming||!getKey(); }
+async function handleSend(){
+  if(state.streaming) return; const text=el.input.value.trim(); if(!text) return;
+  if(!getKey()){ openSettings(); return; }
+  el.input.value=""; autoGrow(); await submitAnswer(text);
+}
+/* One path for both typed answers and tapped options. */
+async function submitAnswer(text){
+  if(state.streaming) return; if(!getKey()){ openSettings(); return; }
+  state.forceGenerate=false;   // answering is not a "generate now"
+  if(state.messages.length===0){ showHero(false); }
+  state.messages.push({role:"user",content:text}); const {bubble}=addTurn("user"); bubble.textContent=text;
+  el.composer.classList.add("flash"); setTimeout(()=>el.composer.classList.remove("flash"),650);   // glow flare when the message is sent
+  setComposerEnabled(false); scrollToBottom(); await runTurn();
+  if(state.phase==="interview") setTimeout(()=>el.input.focus(),30);
+}
+async function generateNow(){
+  if(state.streaming||!getKey()) return;
+  state.forceGenerate=true;   // escape hatch bypasses the playback gate
+  state.messages.push({role:"user",content:"Please generate the brief now using everything you know so far. Skip any more questions and the playback, and briefly note any assumptions you had to make."});
+  const {bubble}=addTurn("user"); bubble.textContent="Generate it now with what you have."; setComposerEnabled(false); updateEscapeHatch(); scrollToBottom(); await runTurn();
+}
+
+/* =========================================================================
+   COPY / DOWNLOAD
+   ========================================================================= */
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); return true; }catch(_){ try{ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); const ok=document.execCommand("copy"); ta.remove(); return ok; }catch(__){ return false; } } }
+function slugify(s){ return (s||"brief").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,50)||"brief"; }
+function downloadMd(){ const md=state.currentBrief?state.currentBrief.markdown:""; const blob=new Blob([md],{type:"text/markdown;charset=utf-8"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=slugify(briefTitle(md))+".md"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); toast("Downloaded"); }
+
+/* =========================================================================
+   TOAST + CHIP + PROFILE
+   ========================================================================= */
+let toastTimer; function toast(msg){ el.toast.textContent=msg; el.toast.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.toast.classList.remove("show"),1800); }
+function renderChip(){ const has=!!getKey(); el.statusChip.classList.toggle("ok",has); el.chipText.innerHTML=has?"<strong>"+providerLabel()+"</strong> · key set":"<strong>"+providerLabel()+"</strong> · add a key"; }
+function renderProfile(){ const nm=state.name&&state.name.trim(); el.whoName.textContent=nm||"You"; el.avatar.textContent=(nm?nm.trim()[0]:PRODUCT_NAME[0]).toUpperCase(); }
+
+/* =========================================================================
+   SETTINGS
+   ========================================================================= */
+function syncSettingsUI(){
+  el.providerSeg.querySelectorAll("label").forEach(l=>{ const p=l.getAttribute("data-provider"); const sel=p===state.provider; l.classList.toggle("sel",sel); l.querySelector("input").checked=sel; });
+  const lab=providerLabel(); el.keyProviderName.textContent=lab; el.trustProvider.textContent=lab; el.keyInput.value=getKey(); el.keyInput.type="password"; el.keyToggle.textContent="Show"; el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent=""; el.nameInput.value=state.name||""; el.searchToggle.checked=state.webSearch;
+}
+function openSettings(){ syncSettingsUI(); openOverlay(el.settingsOverlay); setTimeout(()=>el.keyInput.focus(),60); }
+function closeSettings(){ closeOverlay(el.settingsOverlay); }
+
+/* =========================================================================
+   WALKTHROUGH (explainer + key setup w/ validation)
+   ========================================================================= */
+let wtStep=0; const WT_KEY_STEP=5; let wtProvider="groq", wtValidated=false;
+function showWalkthrough(fromStart){
+  wtProvider=state.provider; wtValidated=hasAnyKey(); el.wtName.value=state.name||"";
+  wtStep = (fromStart || lsGet(LS.onboarded,"")!=="1") ? 0 : WT_KEY_STEP;  // returning user w/o key lands on key step
+  el.wtKeyInput.value=getKey(wtProvider); el.wtValidateMsg.className="validate-msg"; el.wtValidateMsg.textContent= wtValidated?"":"";
+  syncWtProvider(); renderWt(); openOverlay(el.wtOverlay);
+}
+function syncWtProvider(){
+  el.wtProviderSeg.querySelectorAll("label").forEach(l=>{ const p=l.getAttribute("data-provider"); const sel=p===wtProvider; l.classList.toggle("sel",sel); l.querySelector("input").checked=sel; });
+  el.wtKeyProvider.textContent=providerLabel(wtProvider); el.wtKeyInput.value=getKey(wtProvider);
+  el.wtKeySteps.innerHTML=""; PROVIDERS[wtProvider].steps.forEach((s,i)=>{ const li=document.createElement("li"); li.textContent=s; el.wtKeySteps.appendChild(li); });
+  const link=document.createElement("li"); link.innerHTML='Open: <a href="'+PROVIDERS[wtProvider].keyUrl+'" target="_blank" rel="noopener">'+PROVIDERS[wtProvider].keyUrl.replace(/^https:\/\//,"")+"</a>"; el.wtKeySteps.appendChild(link);
+  wtValidated=!!getKey(wtProvider); refreshWtNext();
+}
+function renderWt(){
+  document.querySelectorAll(".wt-slide").forEach((s,i)=>s.classList.toggle("active",i===wtStep));
+  el.wtDots.querySelectorAll("i").forEach((d,i)=>d.classList.toggle("on",i===wtStep));
+  el.wtBack.style.visibility=wtStep===0?"hidden":"visible";
+  el.wtSkip.style.visibility=wtStep===WT_KEY_STEP?"hidden":"visible";   // can't skip the key step
+  refreshWtNext();
+  if(wtStep===WT_KEY_STEP) setTimeout(()=>el.wtKeyInput.focus(),60);
+}
+function refreshWtNext(){
+  if(wtStep===WT_KEY_STEP){ el.wtNext.textContent="Sign in & start"; el.wtNext.disabled=!wtValidated; }
+  else { el.wtNext.textContent="Next"; el.wtNext.disabled=false; }
+}
+async function wtDoValidate(){
+  const key=el.wtKeyInput.value.trim(); if(!key){ el.wtValidateMsg.className="validate-msg bad"; el.wtValidateMsg.textContent="Paste your key first."; return; }
+  el.wtValidate.disabled=true; el.wtValidate.textContent="Testing…"; el.wtValidateMsg.className="validate-msg"; el.wtValidateMsg.textContent="Checking your key…";
+  const r=await validateKey(wtProvider,key); el.wtValidate.disabled=false; el.wtValidate.textContent="Connect";
+  if(r.ok){ setKey(key,wtProvider); state.provider=wtProvider; lsSet(LS.provider,wtProvider); wtValidated=true; el.wtValidateMsg.className="validate-msg ok"; el.wtValidateMsg.innerHTML="✓ Connected — you're ready"; renderChip(); setComposerEnabled(true); }
+  else { wtValidated=false; el.wtValidateMsg.className="validate-msg bad"; el.wtValidateMsg.textContent=r.message; }
+  refreshWtNext();
+}
+function finishWalkthrough(){ const nm=el.wtName.value.trim(); if(nm!==state.name){ state.name=nm; if(nm) lsSet(LS.name,nm); else lsDel(LS.name); renderProfile(); } lsSet(LS.onboarded,"1"); closeOverlay(el.wtOverlay); renderChip(); showPicker(); }
+
+/* =========================================================================
+   OVERLAY helpers (focus trap + Escape)
+   ========================================================================= */
+let activeOverlay=null, lastFocus=null;
+function openOverlay(ov){ lastFocus=document.activeElement; activeOverlay=ov; ov.classList.add("open"); }
+function closeOverlay(ov){ ov.classList.remove("open"); if(activeOverlay===ov) activeOverlay=null; if(lastFocus&&lastFocus.focus){ try{ lastFocus.focus(); }catch(e){} } }
+function trapTab(e){ if(!activeOverlay||e.key!=="Tab") return; const f=activeOverlay.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),textarea,[tabindex]:not([tabindex="-1"])'); const v=Array.prototype.filter.call(f,x=>x.offsetParent!==null); if(!v.length) return; const first=v[0],last=v[v.length-1]; if(e.shiftKey&&document.activeElement===first){ e.preventDefault(); last.focus(); } else if(!e.shiftKey&&document.activeElement===last){ e.preventDefault(); first.focus(); } }
+
+/* =========================================================================
+   MOBILE SIDEBAR
+   ========================================================================= */
+function openSidebarMobile(){ el.sidebar.classList.add("open"); el.scrim.classList.add("open"); }
+function closeSidebarMobile(){ el.sidebar.classList.remove("open"); el.scrim.classList.remove("open"); }
+
+/* =========================================================================
+   EVENTS
+   ========================================================================= */
+function wireEvents(){
+  el.composer.addEventListener("submit",(e)=>{ e.preventDefault(); handleSend(); });
+  el.input.addEventListener("input",()=>{ autoGrow(); setComposerEnabled(true); });
+  el.input.addEventListener("keydown",(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); if(!el.sendBtn.disabled) handleSend(); } });
+  el.ehBtn.addEventListener("click",generateNow);
+  el.newBtn.addEventListener("click",()=>startNew(false));
+  el.startOverBtn.addEventListener("click",()=>startNew(false));
+  el.refineBtn.addEventListener("click",refineBrief);
+  el.copyBtn.addEventListener("click",async()=>{ const md=state.currentBrief?state.currentBrief.markdown:""; const ok=await copyText(md); const prev=el.copyLabel.textContent; el.copyLabel.textContent=ok?"Copied!":"Press Ctrl+C"; setTimeout(()=>{ el.copyLabel.textContent=activeMode().copyLabel; },1600); if(ok) toast("Copied — paste it into your AI builder"); });
+  el.downloadBtn.addEventListener("click",downloadMd);
+  el.menuBtn.addEventListener("click",openSidebarMobile); el.scrim.addEventListener("click",closeSidebarMobile);
+  el.statusChip.addEventListener("click",openSettings); el.settingsBtn.addEventListener("click",openSettings); el.whoBtn.addEventListener("click",openSettings);
+  el.settingsClose.addEventListener("click",closeSettings);
+  el.nameInput.addEventListener("input",()=>{ state.name=el.nameInput.value.trim(); if(state.name) lsSet(LS.name,state.name); else lsDel(LS.name); renderProfile(); });
+  el.settingsOverlay.addEventListener("click",(e)=>{ if(e.target===el.settingsOverlay) closeSettings(); });
+  el.providerSeg.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>{ state.provider=inp.value; lsSet(LS.provider,state.provider); syncSettingsUI(); renderChip(); setComposerEnabled(true); updateEscapeHatch(); }));
+  el.keySave.addEventListener("click",async()=>{
+    const key=el.keyInput.value.trim();
+    if(!key){ setKey(""); renderChip(); setComposerEnabled(true); updateEscapeHatch(); el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Key cleared."; return; }
+    el.keySave.disabled=true; el.keySave.textContent="Testing…"; el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Checking your key…";
+    const r=await validateKey(state.provider,key); el.keySave.disabled=false; el.keySave.textContent="Save & test key";
+    if(r.ok){ setKey(key); el.settingsValidateMsg.className="validate-msg ok"; el.settingsValidateMsg.innerHTML="✓ Connected and saved"; }
+    else { setKey(key); el.settingsValidateMsg.className="validate-msg bad"; el.settingsValidateMsg.textContent=r.message+" (saved anyway)"; }
+    renderChip(); setComposerEnabled(true); updateEscapeHatch();
+  });
+  el.keyClear.addEventListener("click",()=>{ setKey(""); el.keyInput.value=""; renderChip(); setComposerEnabled(true); updateEscapeHatch(); el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Key cleared."; });
+  el.keyInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); el.keySave.click(); } });
+  el.keyToggle.addEventListener("click",()=>{ const show=el.keyInput.type==="password"; el.keyInput.type=show?"text":"password"; el.keyToggle.textContent=show?"Hide":"Show"; });
+  el.searchToggle.addEventListener("change",()=>{ state.webSearch=el.searchToggle.checked; if(state.webSearch) state.searchUnavailable=false; lsSet(LS.search, state.webSearch?"1":"0"); });
+  el.replayWalkthrough.addEventListener("click",()=>{ closeSettings(); setTimeout(()=>showWalkthrough(true),180); });
+  el.clearAll.addEventListener("click",()=>{ if(confirm("Clear everything "+PRODUCT_NAME+" has stored in this browser — your name, API keys, and saved briefs? This can't be undone.")){ Object.values(LS).forEach(lsDel); location.reload(); } });
+  // walkthrough
+  el.wtProviderSeg.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>{ wtProvider=inp.value; el.wtValidateMsg.className="validate-msg"; el.wtValidateMsg.textContent=""; syncWtProvider(); }));
+  el.wtValidate.addEventListener("click",wtDoValidate);
+  el.wtKeyInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter"){ e.preventDefault(); wtDoValidate(); } });
+  el.wtKeyInput.addEventListener("input",()=>{ wtValidated=!!getKey(wtProvider); });
+  el.wtNext.addEventListener("click",()=>{ if(wtStep<WT_KEY_STEP){ wtStep++; renderWt(); } else if(wtValidated){ finishWalkthrough(); } });
+  el.wtBack.addEventListener("click",()=>{ if(wtStep>0){ wtStep--; renderWt(); } });
+  el.wtSkip.addEventListener("click",()=>{ wtStep=WT_KEY_STEP; renderWt(); });
+  el.igSkip.addEventListener("click",()=>el.wtNext.click());
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape"){ if(el.settingsOverlay.classList.contains("open")) closeSettings(); else if(el.sidebar.classList.contains("open")) closeSidebarMobile(); }
+    trapTab(e);
+  });
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+function applyProductName(){ document.title=PRODUCT_NAME+" — turn a fuzzy idea into a clean build brief"; el.brandWord.textContent=PRODUCT_NAME; el.wtOverlay.setAttribute("aria-label","Welcome to "+PRODUCT_NAME); el.settingsProviderSub.textContent=PRODUCT_NAME+" talks directly to whichever you pick. Both have a free tier."; document.querySelectorAll(".pn").forEach(n=>n.textContent=PRODUCT_NAME); }
+function init(){
+  applyProductName(); wireEvents(); renderProfile(); renderChip(); renderHistory();
+  const m=activeMode(); el.heroTitle.innerHTML=personalizedHero(m); el.heroSub.textContent=m.heroSub; renderExamples(m);
+  showPicker(); autoGrow(); setComposerEnabled(true);
+  if(lsGet(LS.onboarded,"")!=="1" || !hasAnyKey()){ showWalkthrough(lsGet(LS.onboarded,"")!=="1"); }
+}
+init();
+</script>
+</body>
+</html>
