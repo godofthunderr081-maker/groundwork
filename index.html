@@ -783,9 +783,10 @@ const SUPABASE_ANON_KEY = "";
 
 /* MODEL NAMES — swap for any current chat model.
    Groq:   https://console.groq.com/docs/models
-   Gemini: https://ai.google.dev/gemini-api/docs/models */
-const GROQ_MODEL   = "llama-3.3-70b-versatile";
-const GEMINI_MODEL = "gemini-2.0-flash";
+   Gemini: https://ai.google.dev/gemini-api/docs/models
+   (gemini-2.0-flash was retired Mar 2026; llama-3.3-70b-versatile deprecated Jun 2026.) */
+const GROQ_MODEL   = "openai/gpt-oss-120b";   // current free-tier Groq model (replaces llama-3.3-70b-versatile)
+const GEMINI_MODEL = "gemini-2.5-flash";      // best free-tier balance: quality + Google-Search grounding
 
 /* The model emits this on its own line when the interview is done. */
 const GROQ_SEARCH_MODEL = "groq/compound";   // Groq model with built-in web search (older alias: "compound-beta")
