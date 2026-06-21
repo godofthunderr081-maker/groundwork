@@ -1058,6 +1058,9 @@ function providerLabel(p){ return PROVIDERS[p||state.provider].label; }
 function getKey(p){ return lsGet(PROVIDERS[p||state.provider].keyLS,"").trim(); }
 function setKey(val,p){ const w=PROVIDERS[p||state.provider]; if(val) lsSet(w.keyLS,val); else lsDel(w.keyLS); }
 function hasAnyKey(){ return !!getKey(); }
+/* Strip whitespace, line-breaks and invisible characters that mobile copy/paste
+   often sneaks into a key — a single stray space makes a good key look "expired". */
+function cleanKey(s){ return (s||"").replace(/[\s​-‍﻿]+/g,""); }
 
 /* =========================================================================
    DOM
@@ -1098,12 +1101,15 @@ function renderMarkdown(md){
 /* =========================================================================
    NETWORKING
    ========================================================================= */
+function keyHelpMessage(p){ const url=PROVIDERS[state.provider].keyUrl.replace(/^https:\/\//,"");
+  return "Your "+p+" key was rejected. Create a fresh one at "+url+", copy the WHOLE key (no spaces), and paste it again. A brand-new key can take a minute or two to activate."; }
+function looksLikeKeyProblem(detail){ const d=(detail||"").toLowerCase(); return d.includes("api key")||d.includes("api_key")||d.includes("expired")||d.includes("invalid")||d.includes("not valid")||d.includes("permission"); }
 function httpUserMessage(status,detail){ const p=providerLabel();
-  if(status===401||status===403) return "That API key didn't work. Check you pasted the full "+p+" key for the right provider.";
+  if(status===401||status===403) return keyHelpMessage(p);
   if(status===429) return "You're going faster than the free tier allows. Wait a minute, then try again.";
   if(status===404) return "The model wasn't found on "+p+". The model name may have changed — update it in the code.";
   if(status>=500) return p+" is having trouble right now. Give it a moment and try again.";
-  if(status===400) return "The request was rejected by "+p+(detail?(": "+detail):"")+".";
+  if(status===400) return looksLikeKeyProblem(detail) ? keyHelpMessage(p) : ("The request was rejected by "+p+(detail?(": "+detail):"")+".");
   return "Something went wrong talking to "+p+" (error "+status+")."; }
 async function readDetail(res){ let d=""; try{ const j=await res.json(); d=(j&&j.error&&(j.error.message||j.error))||""; }catch(_){ try{ d=(await res.text()).slice(0,200); }catch(__){} } return typeof d==="string"?d:""; }
 
@@ -1422,7 +1428,7 @@ function refreshWtNext(){
   else { el.wtNext.textContent="Next"; el.wtNext.disabled=false; }
 }
 async function wtDoValidate(){
-  const key=el.wtKeyInput.value.trim(); if(!key){ el.wtValidateMsg.className="validate-msg bad"; el.wtValidateMsg.textContent="Paste your key first."; return; }
+  const key=cleanKey(el.wtKeyInput.value); el.wtKeyInput.value=key; if(!key){ el.wtValidateMsg.className="validate-msg bad"; el.wtValidateMsg.textContent="Paste your key first."; return; }
   el.wtValidate.disabled=true; el.wtValidate.textContent="Testing…"; el.wtValidateMsg.className="validate-msg"; el.wtValidateMsg.textContent="Checking your key…";
   const r=await validateKey(wtProvider,key); el.wtValidate.disabled=false; el.wtValidate.textContent="Connect";
   if(r.ok){ setKey(key,wtProvider); state.provider=wtProvider; lsSet(LS.provider,wtProvider); wtValidated=true; el.wtValidateMsg.className="validate-msg ok"; el.wtValidateMsg.innerHTML="✓ Connected — you're ready"; pushCloudKey(wtProvider, key); renderChip(); setComposerEnabled(true); }
@@ -1465,7 +1471,7 @@ function wireEvents(){
   el.settingsOverlay.addEventListener("click",(e)=>{ if(e.target===el.settingsOverlay) closeSettings(); });
   el.providerSeg.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>{ state.provider=inp.value; lsSet(LS.provider,state.provider); syncSettingsUI(); renderChip(); setComposerEnabled(true); updateEscapeHatch(); }));
   el.keySave.addEventListener("click",async()=>{
-    const key=el.keyInput.value.trim();
+    const key=cleanKey(el.keyInput.value); el.keyInput.value=key;
     if(!key){ setKey(""); renderChip(); setComposerEnabled(true); updateEscapeHatch(); el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Key cleared."; return; }
     el.keySave.disabled=true; el.keySave.textContent="Testing…"; el.settingsValidateMsg.className="validate-msg"; el.settingsValidateMsg.textContent="Checking your key…";
     const r=await validateKey(state.provider,key); el.keySave.disabled=false; el.keySave.textContent="Save & test key";
