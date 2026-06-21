@@ -665,8 +665,8 @@ body{
         <label>AI provider</label>
         <div class="sub" id="settingsProviderSub">Made-Up talks directly to whichever you pick. Both have a free tier.</div>
         <div class="seg" id="providerSeg">
-          <label data-provider="gemini"><input type="radio" name="provider" value="gemini" /><div class="pname">Gemini <span class="tag">Recommended</span></div><div class="pdesc">Smarter, plus reliable web search.</div></label>
-          <label data-provider="groq"><input type="radio" name="provider" value="groq" /><div class="pname">Groq <span class="tag">Fast</span></div><div class="pdesc">Fastest replies, free.</div></label>
+          <label data-provider="groq"><input type="radio" name="provider" value="groq" /><div class="pname">Groq <span class="tag">Recommended</span></div><div class="pdesc">Fastest, free, highest limits — no card.</div></label>
+          <label data-provider="gemini"><input type="radio" name="provider" value="gemini" /><div class="pname">Gemini <span class="tag">Best search</span></div><div class="pdesc">Smart, with Google web search.</div></label>
         </div>
       </div>
       <div class="field">
@@ -738,8 +738,8 @@ body{
         <div class="field" style="margin-top:var(--s16)">
           <label>Choose a provider</label>
           <div class="seg" id="wtProviderSeg">
-            <label data-provider="gemini"><input type="radio" name="wtprovider" value="gemini" /><div class="pname">Gemini <span class="tag">Recommended</span></div><div class="pdesc">Smarter, plus best web search.</div></label>
-            <label data-provider="groq"><input type="radio" name="wtprovider" value="groq" /><div class="pname">Groq <span class="tag">Fast</span></div><div class="pdesc">Fastest, free, no card.</div></label>
+            <label data-provider="groq"><input type="radio" name="wtprovider" value="groq" /><div class="pname">Groq <span class="tag">Recommended</span></div><div class="pdesc">Fastest, free, highest limits — no card.</div></label>
+            <label data-provider="gemini"><input type="radio" name="wtprovider" value="gemini" /><div class="pname">Gemini <span class="tag">Best search</span></div><div class="pdesc">Smart, with Google web search.</div></label>
           </div>
         </div>
         <div class="field">
@@ -1025,7 +1025,7 @@ function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
    STATE
    ========================================================================= */
 const state = {
-  provider: lsGet(LS.provider,"gemini"),
+  provider: lsGet(LS.provider,"groq"),
   name: lsGet(LS.name,""),
   webSearch: lsGet(LS.search,"1")!=="0",
   searchUnavailable: false,
