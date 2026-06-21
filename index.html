@@ -811,6 +811,10 @@ Anyone who signs up
 
 Only offer options when they truly fit; for open-ended questions, just ask with no marker. Never attach options to your playback message or to the final output. The marker and its options belong to the SAME question message.`;
 const SEARCH_INSTRUCTION = `You can search the web. When current facts or a recommendation (tools, platforms, pricing, real-world examples, best practices) would be more accurate with up-to-date information, look it up and let what you find shape your next question and the final result. Prefer accurate, specific guidance over guesses, and keep using plain language.`;
+/* Appended to every mode so the assistant LEADS a beginner instead of quizzing
+   them — it assumes the user may not know the answers and guides with options
+   and recommendations rather than open-ended questions that presume expertise. */
+const GUIDANCE_INSTRUCTION = `ASSUME THE USER MAY NOT KNOW THE ANSWERS — GUIDE THEM, DON'T QUIZ THEM. They usually have only a rough idea and are relying on YOU to figure things out. Never ask a question that assumes they already know or have decided something. For almost every question, EITHER (a) offer 2 to 4 concrete options for them to simply pick from (using the OPTIONS format), OR (b) propose your own recommended answer and ask them to confirm — e.g. "I'd go with X here — want that, or something else?". Never leave them facing a blank, open-ended question they can't answer. The moment they say "I don't know", "you decide", "whatever you think", "I'm not sure", or seem unsure, DO NOT push them to invent — pick the best sensible default yourself, tell them in one short line what you chose and why, and move on. Lead with your suggestions, keep the thinking on your side, and make every single step feel effortless. When in doubt, make a confident choice for them and let them correct you, rather than interrogating them.`;
 /* Appended to every mode so the assistant answers in whatever language/dialect/
    script the user writes in (including mixed styles like Hinglish), while leaving
    the control markers and section headings intact so parsing + paste stay safe. */
@@ -1153,7 +1157,7 @@ async function readStream(res, extract, onToken){
 function searchOn(){ return state.webSearch && !state.searchUnavailable; }
 async function streamChat(messages, onToken){
   const key=getKey(); if(!key){ const e=new Error("no-key"); e.userMessage="Add your API key in Settings first."; throw e; }
-  const sys = activeMode().systemPrompt+"\n\n"+OPTIONS_INSTRUCTION+"\n\n"+LANGUAGE_INSTRUCTION+(searchOn()?"\n\n"+SEARCH_INSTRUCTION:"");
+  const sys = activeMode().systemPrompt+"\n\n"+OPTIONS_INSTRUCTION+"\n\n"+GUIDANCE_INSTRUCTION+"\n\n"+LANGUAGE_INSTRUCTION+(searchOn()?"\n\n"+SEARCH_INSTRUCTION:"");
   const attempts = searchOn() ? [true,false] : [false];   // try web-search model, fall back to the base model
   for(let i=0;i<attempts.length;i++){
     const useSearch=attempts[i], last=(i===attempts.length-1);
